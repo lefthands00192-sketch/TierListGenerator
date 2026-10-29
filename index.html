@@ -53,7 +53,7 @@
     .btn-danger { background: #ef4444; border-color: #f87171; }
     #file-input, #backup-input { display: none; }
 
-    /* Tier Table (UI 복원) */
+    /* Tier Table */
     #tier-board {
       background: #0d0e10;
       border: 1px solid var(--border);
@@ -89,7 +89,10 @@
       align-content: flex-start;
     }
 
-    /* 카드 1:1 정사각형 정비율 고정 */
+    /*
+      카드: <img>의 object-fit은 html2canvas가 지원하지 않아 캡처 시 찌그러짐.
+      → background-image + background-size: contain 으로 변경 (html2canvas 지원)
+    */
     .item-card {
       width: 68px !important;
       height: 68px !important;
@@ -97,22 +100,14 @@
       min-height: 68px !important;
       border-radius: 6px;
       background-color: #000;
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: contain;
       position: relative;
       border: 1px solid rgba(255,255,255,0.15);
       touch-action: none;
-      display: flex;
-      justify-content: center;
-      align-items: center;
       flex-shrink: 0;
       overflow: hidden;
-    }
-
-    .item-card img {
-      width: 100% !important;
-      height: 100% !important;
-      object-fit: contain !important;
-      pointer-events: none;
-      display: block;
     }
 
     /* 드래그 효과 */
@@ -188,7 +183,7 @@
     <div class="toolbar">
       <label class="btn btn-primary" for="file-input">📷 이미지 업로드</label>
       <input type="file" id="file-input" multiple accept="image/*">
-      
+
       <button class="btn btn-success" onclick="exportBackup()">💾 백업 저장</button>
       <label class="btn" for="backup-input">📂 백업 불러오기</label>
       <input type="file" id="backup-input" accept=".json">
@@ -258,10 +253,8 @@
       const card = document.createElement('div');
       card.className = 'item-card';
       card.setAttribute('data-src', imgSrc);
-
-      const img = document.createElement('img');
-      img.src = imgSrc;
-      card.appendChild(img);
+      // <img> 대신 배경 이미지로 표시 (비율 유지 + 캡처 시 찌그러짐 방지)
+      card.style.backgroundImage = 'url("' + imgSrc + '")';
 
       attachTouchAndClickEvents(card);
       const parent = document.getElementById(parentId);
@@ -340,15 +333,18 @@
       selectedItem = null;
     }
 
-    /* 💾 자동 저장 및 잔여 현상 수정 */
+    /* 💾 자동 저장 */
     function autoSave() {
-      const data = collectData();
-      localStorage.setItem('tierlist_autosave', JSON.stringify(data));
+      try {
+        const data = collectData();
+        localStorage.setItem('tierlist_autosave', JSON.stringify(data));
+      } catch (e) {
+        console.warn('자동 저장 실패(용량 초과 가능):', e);
+      }
     }
 
     function loadAutoSave() {
       const saved = localStorage.getItem('tierlist_autosave');
-      // 새로고침 시 미분류/티어 보관함 전체 초기화 후 정확히 재구성
       document.querySelectorAll('.tier-items').forEach(el => el.innerHTML = '');
       if (saved) {
         try {
@@ -430,18 +426,21 @@
       }
     }
 
-    /* 🖼️ 화면 UI 100% 동일 유지 캡처 방식 (모바일 사파리 검은상자 방지 보정) */
+    /* 🖼️ 고화질 이미지 저장 (비율 유지) */
     function saveAsImage() {
       const board = document.getElementById('tier-board');
       const btn = document.getElementById('download-btn');
       const originalText = btn.innerHTML;
-      
+
       btn.innerHTML = '⏳ 처리 중...';
       btn.disabled = true;
 
+      // 고화질: 최소 3배, 최대 4배 (iOS 캔버스 크기 제한 고려)
+      const scale = Math.min(4, Math.max(3, window.devicePixelRatio || 1));
+
       html2canvas(board, {
         backgroundColor: '#0d0e10',
-        scale: window.devicePixelRatio > 1 ? window.devicePixelRatio : 2,
+        scale: scale,
         useCORS: true,
         logging: false,
         allowTaint: true
