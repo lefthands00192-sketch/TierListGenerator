@@ -3,69 +3,210 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>티어표 만들기</title>
+  <title>티어표 생성기 Pro</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #121212; color: #fff; padding: 12px; }
-    h1 { text-align: center; font-size: 1.4rem; margin-bottom: 12px; }
-    
-    .toolbar { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 15px; }
-    .btn { background: #333; color: #fff; border: 1px solid #555; padding: 8px 12px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; }
-    .btn-primary { background: #2563eb; border-color: #3b82f6; }
+    :root {
+      --bg: #121316;
+      --panel: #1e2025;
+      --border: #2e323b;
+      --text: #f0f2f5;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container { width: 100%; max-width: 900px; }
+    h1 { text-align: center; font-size: 1.5rem; margin-bottom: 16px; font-weight: 800; letter-spacing: -0.5px; }
+
+    /* Controls */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      background: #2b2e36;
+      color: #fff;
+      border: 1px solid var(--border);
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: #3b82f6; border-color: #60a5fa; }
     #file-input { display: none; }
 
-    #tier-board { background: #000; border: 1px solid #444; border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; gap: 2px; }
-    .tier-row { display: flex; min-height: 80px; background: #222; }
-    .tier-label { width: 70px; min-width: 70px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; color: #000; text-align: center; }
-    .tier-items { flex: 1; display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; background: #1a1a1a; min-height: 80px; align-content: flex-start; }
+    /* Tier Table */
+    #tier-board {
+      background: #0d0e10;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
 
-    .item-card { width: 65px; height: 65px; border-radius: 4px; overflow: hidden; background: #333; position: relative; cursor: pointer; border: 1px solid #555; }
-    .item-card img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+    .tier-row { display: flex; min-height: 85px; background: #181a1f; }
+    .tier-label {
+      width: 80px;
+      min-width: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 1.5rem;
+      color: #000;
+      text-align: center;
+      text-shadow: 0 1px 2px rgba(255,255,255,0.3);
+    }
 
-    #unranked-section { margin-top: 15px; background: #222; padding: 10px; border-radius: 6px; border: 1px solid #444; }
-    #unranked-section h3 { font-size: 0.9rem; margin-bottom: 8px; color: #aaa; }
-    #unranked-pool { min-height: 90px; display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; background: #141414; border-radius: 4px; border: 1px dashed #555; }
+    .tier-items {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px;
+      background: #141518;
+      min-height: 85px;
+      align-content: flex-start;
+    }
 
-    /* 모달 */
-    .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:none; justify-content:center; align-items:center; z-index:9999; }
-    .modal-overlay.active { display:flex; }
-    .modal-box { background:#2a2a2a; padding:15px; border-radius:10px; width:85%; max-width:300px; text-align:center; }
-    .modal-box h3 { margin-bottom:12px; font-size:1rem; }
-    .tier-btns { display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:12px; }
-    .t-btn { padding:10px; border:none; border-radius:4px; font-weight:bold; font-size:1rem; color:#000; }
-    .preview-img { width:100%; max-height:60vh; object-fit:contain; margin-bottom:10px; }
+    /* Item Card (비율 유지 및 찌그러짐 방지) */
+    .item-card {
+      width: 70px;
+      height: 70px;
+      min-width: 70px;
+      min-height: 70px;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #000;
+      position: relative;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      touch-action: none; /* 터치 스크롤 방지 */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .item-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain; /* 비율 파괴 및 찌그러짐 완전 방지 */
+      pointer-events: none;
+      display: block;
+    }
+
+    /* Unranked Pool */
+    #unranked-section {
+      margin-top: 20px;
+      background: var(--panel);
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    #unranked-section h3 { font-size: 0.95rem; margin-bottom: 10px; color: #9ca3af; font-weight: 600; }
+    #unranked-pool {
+      min-height: 95px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px;
+      background: #121316;
+      border-radius: 8px;
+      border: 2px dashed #2e323b;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .modal-overlay.active { display: flex; }
+
+    .modal-box {
+      background: #23262d;
+      padding: 20px;
+      border-radius: 14px;
+      width: 85%;
+      max-width: 320px;
+      text-align: center;
+      border: 1px solid #3f4452;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
+    .modal-box h3 { margin-bottom: 14px; font-size: 1.1rem; }
+    .tier-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .t-btn {
+      padding: 12px 0;
+      border: none;
+      border-radius: 6px;
+      font-weight: 900;
+      font-size: 1.1rem;
+      color: #000;
+      cursor: pointer;
+    }
+
+    .preview-img { width: 100%; max-height: 60vh; object-fit: contain; margin: 12px 0; border-radius: 6px; border: 1px solid #444; }
   </style>
 </head>
 <body>
 
-  <h1>🏆 티어표 생성기</h1>
+  <div class="container">
+    <h1>🏆 티어표 생성기 Pro</h1>
 
-  <div class="toolbar">
-    <label class="btn btn-primary" for="file-input">📷 이미지 추가</label>
-    <input type="file" id="file-input" multiple accept="image/*">
-    <button class="btn" onclick="saveAsImage()">💾 이미지 저장</button>
+    <div class="toolbar">
+      <label class="btn btn-primary" for="file-input">📷 이미지 업로드</label>
+      <input type="file" id="file-input" multiple accept="image/*">
+      <button class="btn" onclick="saveAsImage()">💾 이미지 저장</button>
+    </div>
+
+    <!-- Tier Board -->
+    <div id="tier-board">
+      <div class="tier-row"><div class="tier-label" style="background: #ff7f7f;">S</div><div class="tier-items" id="tier-S"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #ffbf7f;">A</div><div class="tier-items" id="tier-A"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #ffff7f;">B</div><div class="tier-items" id="tier-B"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #7fff7f;">C</div><div class="tier-items" id="tier-C"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #7fbfff;">D</div><div class="tier-items" id="tier-D"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #bf7fff;">F</div><div class="tier-items" id="tier-F"></div></div>
+    </div>
+
+    <!-- Unranked Pool -->
+    <div id="unranked-section">
+      <h3>📦 미분류 보관함 (항목을 터치하여 바로 이동)</h3>
+      <div id="unranked-pool" class="tier-items"></div>
+    </div>
   </div>
 
-  <div id="tier-board">
-    <div class="tier-row"><div class="tier-label" style="background:#ff7f7f;">S</div><div class="tier-items" id="tier-S"></div></div>
-    <div class="tier-row"><div class="tier-label" style="background:#ffbf7f;">A</div><div class="tier-items" id="tier-A"></div></div>
-    <div class="tier-row"><div class="tier-label" style="background:#ffff7f;">B</div><div class="tier-items" id="tier-B"></div></div>
-    <div class="tier-row"><div class="tier-label" style="background:#7fff7f;">C</div><div class="tier-items" id="tier-C"></div></div>
-    <div class="tier-row"><div class="tier-label" style="background:#7fbfff;">D</div><div class="tier-items" id="tier-D"></div></div>
-    <div class="tier-row"><div class="tier-label" style="background:#bf7fff;">F</div><div class="tier-items" id="tier-F"></div></div>
-  </div>
-
-  <div id="unranked-section">
-    <h3>📦 미분류 목록 (클릭하여 이동)</h3>
-    <div id="unranked-pool" class="tier-items"></div>
-  </div>
-
-  <!-- 이동 모달 -->
+  <!-- Quick Move Modal -->
   <div class="modal-overlay" id="move-modal">
     <div class="modal-box">
-      <h3>이동할 등급 선택</h3>
-      <div class="tier-btns">
+      <h3>배치할 등급 선택</h3>
+      <div class="tier-grid">
         <button class="t-btn" style="background:#ff7f7f;" onclick="moveTo('S')">S</button>
         <button class="t-btn" style="background:#ffbf7f;" onclick="moveTo('A')">A</button>
         <button class="t-btn" style="background:#ffff7f;" onclick="moveTo('B')">B</button>
@@ -73,16 +214,16 @@
         <button class="t-btn" style="background:#7fbfff;" onclick="moveTo('D')">D</button>
         <button class="t-btn" style="background:#bf7fff;" onclick="moveTo('F')">F</button>
       </div>
-      <button class="btn" style="width:100%; background:#444;" onclick="moveTo('unranked')">미분류로 이동</button>
-      <button class="btn" style="width:100%; margin-top:6px; background:#222;" onclick="closeModal('move-modal')">취소</button>
+      <button class="btn" style="width:100%; background:#333;" onclick="moveTo('unranked')">미분류로 보낼기</button>
+      <button class="btn" style="width:100%; margin-top:6px; background:#181818;" onclick="closeModal('move-modal')">취소</button>
     </div>
   </div>
 
-  <!-- 이미지 결과 모달 -->
+  <!-- Image Save Modal -->
   <div class="modal-overlay" id="img-modal">
     <div class="modal-box">
-      <h3>티어표 완성!</h3>
-      <p style="font-size:0.8rem; color:#aaa; margin-bottom:8px;">이미지를 길게 눌러 사진 앱에 저장하세요.</p>
+      <h3>완성된 티어표</h3>
+      <p style="font-size:0.8rem; color:#aaa;">이미지를 길게 누르면 사진 앱/앨범에 저장됩니다.</p>
       <img id="result-img" class="preview-img">
       <button class="btn" style="width:100%;" onclick="closeModal('img-modal')">닫기</button>
     </div>
@@ -91,6 +232,7 @@
   <script>
     let selectedItem = null;
 
+    // File Upload Handler
     document.getElementById('file-input').addEventListener('change', function(e) {
       const files = Array.from(e.target.files);
       files.forEach(file => {
@@ -98,11 +240,14 @@
         reader.onload = function(evt) {
           const card = document.createElement('div');
           card.className = 'item-card';
+
           const img = document.createElement('img');
           img.src = evt.target.result;
           card.appendChild(img);
 
-          card.addEventListener('click', function() {
+          // 클릭/터치 이벤트 (스크롤 방섭 없이 즉시 이동 팝업)
+          card.addEventListener('click', function(e) {
+            e.stopPropagation();
             selectedItem = card;
             document.getElementById('move-modal').classList.add('active');
           });
@@ -129,9 +274,14 @@
       selectedItem = null;
     }
 
+    // Export High-Res Canvas
     function saveAsImage() {
       const board = document.getElementById('tier-board');
-      html2canvas(board, { backgroundColor: '#000000' }).then(canvas => {
+      html2canvas(board, {
+        backgroundColor: '#0d0e10',
+        scale: 2, // 고화질 캡처
+        useCORS: true
+      }).then(canvas => {
         const dataUrl = canvas.toDataURL('image/png');
         document.getElementById('result-img').src = dataUrl;
         document.getElementById('img-modal').classList.add('active');
