@@ -96,7 +96,7 @@
                 <button id="importJsonBtn" class="px-3 py-1.5 bg-darkaccent hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition border border-slate-700 flex items-center gap-1.5">
                     <i class="fa-solid fa-file-import text-slate-400"></i> 불러오기
                 </button>
-                <input type="file" id="jsonFileInput" accept=".json" class="hidden">
+                <input type="file" id="jsonFileInput" accept=".json,application/json" class="hidden">
 
                 <button id="downloadBtn" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5 shadow-md shadow-emerald-900/20">
                     <i class="fa-solid fa-download"></i> 이미지 저장
@@ -178,53 +178,53 @@
                 <button id="closeQuickMoveBtn" class="text-slate-400 hover:text-white p-1 text-xs">
                     <i class="fa-solid fa-xmark text-sm"></i>
                 </button>
-            </div>
-            
-            <p class="text-xs text-slate-400">이동할 티어를 선택하면 즉시 배치됩니다:</p>
-            
-            <div id="quickMoveTargets" class="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
-                <!-- Move Target Buttons Rendered Here -->
+    <!-- Image Save / Mobile Fallback Modal -->
+    <div id="imageSaveModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-darkcard border border-slate-700 rounded-2xl w-full max-w-lg p-5 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-image text-emerald-400"></i> 완성된 티어표 이미지
+                </h3>
+                <button id="closeImageModalBtn" class="text-slate-400 hover:text-white p-1 text-xs">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
             </div>
 
-            <div class="pt-2 border-t border-slate-800 flex justify-between gap-2">
-                <button id="deleteActiveItemBtn" class="px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 rounded-xl text-xs font-medium border border-rose-800/50 flex items-center gap-1">
-                    <i class="fa-solid fa-trash-can"></i> 삭제
-                </button>
-                <button id="closeQuickMoveBtn2" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium">닫기</button>
+            <p class="text-xs text-amber-300 bg-amber-950/40 border border-amber-800/50 p-2.5 rounded-xl">
+                💡 <b>모바일 사용자 안내:</b> 다운로드가 안 된 경우 아래 이미지를 <b>길게 눌러 [사진에 저장] 또는 [이미지 저장]</b>을 선택하세요.
+            </p>
+
+            <div class="flex-1 overflow-y-auto bg-darkbg p-2 rounded-xl border border-slate-800 flex items-center justify-center min-h-[180px]">
+                <img id="generatedImagePreview" class="max-w-full h-auto rounded-lg shadow-lg border border-slate-700" alt="Tier List Result">
+            </div>
+
+            <div class="flex justify-between items-center pt-2 border-t border-slate-800 gap-2">
+                <a id="directImageDownloadLink" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition flex items-center gap-2">
+                    <i class="fa-solid fa-download"></i> 직접 파일 다운로드
+                </a>
+                <button id="closeImageModalBtn2" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium">닫기</button>
             </div>
         </div>
     </div>
 
-    <!-- Edit Tier Row Modal -->
-    <div id="tierModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-darkcard border border-slate-700 rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4">
-            <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
-                <i class="fa-solid fa-pen-to-square text-indigo-400"></i> 티어 설정 수정
-            </h3>
-            
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">티어 이름</label>
-                    <input type="text" id="modalTierTitle" class="w-full bg-darkbg border border-slate-700 text-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">배경 색상</label>
-                    <div class="flex items-center gap-2">
-                        <input type="color" id="modalTierColor" class="w-10 h-9 rounded-lg cursor-pointer bg-transparent border-0">
-                        <input type="text" id="modalTierColorHex" class="flex-1 bg-darkbg border border-slate-700 text-slate-200 rounded-xl px-3 py-1.5 text-xs font-mono uppercase" placeholder="#FF7F7F">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-2">기본 색상 선택</label>
-                    <div class="flex flex-wrap gap-2" id="presetColorsContainer"></div>
-                </div>
+    <!-- JSON Backup Fallback Modal -->
+    <div id="jsonBackupModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-darkcard border border-slate-700 rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-3">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-code text-indigo-400"></i> 백업 데이터 텍스트
+                </h3>
+                <button id="closeJsonModalBtn" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
             </div>
-
+            <p class="text-xs text-slate-400">파일 다운로드가 제한된 환경입니다. 아래 텍스트를 복사하여 보관하세요:</p>
+            <textarea id="jsonBackupTextarea" class="w-full h-40 bg-darkbg border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-300 focus:outline-none focus:border-indigo-500 select-all"></textarea>
             <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
-                <button id="closeModalBtn" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium">취소</button>
-                <button id="saveModalBtn" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-medium">저장</button>
+                <button id="copyJsonTextBtn" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-medium flex items-center gap-1.5">
+                    <i class="fa-solid fa-copy"></i> 복사하기
+                </button>
+                <button id="closeJsonModalBtn2" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium">닫기</button>
             </div>
         </div>
     </div>
@@ -274,6 +274,20 @@
         const importJsonBtn = document.getElementById('importJsonBtn');
         const jsonFileInput = document.getElementById('jsonFileInput');
         const downloadBtn = document.getElementById('downloadBtn');
+
+        // Image Save Modal Elements
+        const imageSaveModal = document.getElementById('imageSaveModal');
+        const generatedImagePreview = document.getElementById('generatedImagePreview');
+        const directImageDownloadLink = document.getElementById('directImageDownloadLink');
+        const closeImageModalBtn = document.getElementById('closeImageModalBtn');
+        const closeImageModalBtn2 = document.getElementById('closeImageModalBtn2');
+
+        // JSON Backup Modal Elements
+        const jsonBackupModal = document.getElementById('jsonBackupModal');
+        const jsonBackupTextarea = document.getElementById('jsonBackupTextarea');
+        const copyJsonTextBtn = document.getElementById('copyJsonTextBtn');
+        const closeJsonModalBtn = document.getElementById('closeJsonModalBtn');
+        const closeJsonModalBtn2 = document.getElementById('closeJsonModalBtn2');
 
         // Modals
         const quickMoveModal = document.getElementById('quickMoveModal');
@@ -693,14 +707,23 @@
         }
 
         function exportToJson() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ tiers, items }));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `tierlist_backup_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-            showToast('백업 파일이 저장되었습니다.');
+            try {
+                const dataStr = JSON.stringify({ tiers, items }, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", url);
+                downloadAnchor.setAttribute("download", `tierlist_backup_${new Date().toISOString().slice(0,10)}.json`);
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+                URL.revokeObjectURL(url);
+                showToast('백업 파일 다운로드를 시도했습니다.');
+            } catch (err) {
+                // Fallback for restricted mobile browsers
+                jsonBackupTextarea.value = JSON.stringify({ tiers, items });
+                jsonBackupModal.classList.remove('hidden');
+            }
         }
 
         function importFromJson(e) {
@@ -717,27 +740,49 @@
                         renderTiers();
                         renderItems();
                         showToast('데이터를 성공적으로 불러왔습니다.');
+                    } else {
+                        showToast('올바르지 않은 티어표 백업 양식입니다.');
                     }
                 } catch (err) {
                     showToast('유효하지 않은 백업 파일입니다.');
                 }
+                jsonFileInput.value = '';
             };
             reader.readAsText(file);
         }
 
         function downloadImage() {
-            showToast('이미지 저장 중...');
+            showToast('티어표 이미지 생성 중...');
             html2canvas(tierboard, {
                 backgroundColor: '#12131C',
                 scale: 2,
-                useCORS: true
+                useCORS: true,
+                logging: false
             }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = `my_tier_list_${new Date().toISOString().slice(0,10)}.png`;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-                showToast('이미지 다운로드가 완료되었습니다!');
-            }).catch(() => showToast('이미지 저장 실패'));
+                const dataUrl = canvas.toDataURL('image/png');
+                generatedImagePreview.src = dataUrl;
+                directImageDownloadLink.href = dataUrl;
+                directImageDownloadLink.download = `my_tier_list_${new Date().toISOString().slice(0,10)}.png`;
+
+                // Try automatic download
+                try {
+                    const link = document.createElement('a');
+                    link.download = `my_tier_list_${new Date().toISOString().slice(0,10)}.png`;
+                    link.href = dataUrl;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                } catch (e) {
+                    console.log('Auto download blocked, modal shown.');
+                }
+
+                // Show modal preview so mobile users can long-press to save
+                imageSaveModal.classList.remove('hidden');
+                showToast('이미지 생성 완료! 안 될 경우 길게 눌러 저장하세요.');
+            }).catch(err => {
+                console.error(err);
+                showToast('이미지 생성 중 오류가 발생했습니다.');
+            });
         }
 
         function setupEventListeners() {
@@ -795,6 +840,18 @@
             importJsonBtn.addEventListener('click', () => jsonFileInput.click());
             jsonFileInput.addEventListener('change', importFromJson);
             downloadBtn.addEventListener('click', downloadImage);
+
+            // Modal Close Events
+            closeImageModalBtn.addEventListener('click', () => imageSaveModal.classList.add('hidden'));
+            closeImageModalBtn2.addEventListener('click', () => imageSaveModal.classList.add('hidden'));
+
+            closeJsonModalBtn.addEventListener('click', () => jsonBackupModal.classList.add('hidden'));
+            closeJsonModalBtn2.addEventListener('click', () => jsonBackupModal.classList.add('hidden'));
+            copyJsonTextBtn.addEventListener('click', () => {
+                jsonBackupTextarea.select();
+                document.execCommand('copy');
+                showToast('클립보드에 복사되었습니다.');
+            });
 
             closeQuickMoveBtn.addEventListener('click', closeQuickMoveModal);
             closeQuickMoveBtn2.addEventListener('click', closeQuickMoveModal);
