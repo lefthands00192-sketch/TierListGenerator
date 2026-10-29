@@ -31,7 +31,7 @@
     /* Controls */
     .toolbar {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       justify-content: center;
       margin-bottom: 16px;
       flex-wrap: wrap;
@@ -40,14 +40,16 @@
       background: #2b2e36;
       color: #fff;
       border: 1px solid var(--border);
-      padding: 10px 18px;
+      padding: 9px 14px;
       border-radius: 8px;
       font-weight: 700;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       cursor: pointer;
     }
     .btn-primary { background: #3b82f6; border-color: #60a5fa; }
-    #file-input { display: none; }
+    .btn-success { background: #10b981; border-color: #34d399; }
+    .btn-danger { background: #ef4444; border-color: #f87171; }
+    #file-input, #backup-input { display: none; }
 
     /* Tier Table */
     #tier-board {
@@ -85,7 +87,7 @@
       align-content: flex-start;
     }
 
-    /* Item Card (원형/정사각형 비율 완전 고정) */
+    /* Item Card (고화질 정비율 보정) */
     .item-card {
       width: 68px;
       height: 68px;
@@ -99,20 +101,23 @@
       position: relative;
       border: 1px solid rgba(255,255,255,0.15);
       touch-action: none;
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       flex-shrink: 0;
     }
 
     .item-card img {
-      width: 68px;
-      height: 68px;
-      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
       pointer-events: none;
+      display: block;
     }
 
-    /* 드래그 중 이동 효과 */
+    /* 드래그 효과 */
     .item-card.dragging {
-      opacity: 0.8;
+      opacity: 0.85;
       position: fixed;
       z-index: 10000;
       pointer-events: none;
@@ -199,23 +204,29 @@
     <div class="toolbar">
       <label class="btn btn-primary" for="file-input">📷 이미지 업로드</label>
       <input type="file" id="file-input" multiple accept="image/*">
-      <button class="btn" onclick="saveAsImage()">💾 이미지 저장</button>
+      
+      <button class="btn btn-success" onclick="exportBackup()">💾 백업 저장</button>
+      <label class="btn" for="backup-input">📂 백업 불러오기</label>
+      <input type="file" id="backup-input" accept=".json">
+
+      <button class="btn" onclick="saveAsImage()">🖼️ 이미지 다운로드</button>
+      <button class="btn btn-danger" onclick="clearData()">🔄 전체 초기화</button>
     </div>
 
     <!-- Tier Board -->
     <div id="tier-board">
-      <div class="tier-row"><div class="tier-label" style="background: #ff7f7f;">S</div><div class="tier-items" id="tier-S"></div></div>
-      <div class="tier-row"><div class="tier-label" style="background: #ffbf7f;">A</div><div class="tier-items" id="tier-A"></div></div>
-      <div class="tier-row"><div class="tier-label" style="background: #ffff7f;">B</div><div class="tier-items" id="tier-B"></div></div>
-      <div class="tier-row"><div class="tier-label" style="background: #7fff7f;">C</div><div class="tier-items" id="tier-C"></div></div>
-      <div class="tier-row"><div class="tier-label" style="background: #7fbfff;">D</div><div class="tier-items" id="tier-D"></div></div>
-      <div class="tier-row"><div class="tier-label" style="background: #bf7fff;">F</div><div class="tier-items" id="tier-F"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #ff7f7f;">S</div><div class="tier-items" id="tier-S" data-tier="S"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #ffbf7f;">A</div><div class="tier-items" id="tier-A" data-tier="A"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #ffff7f;">B</div><div class="tier-items" id="tier-B" data-tier="B"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #7fff7f;">C</div><div class="tier-items" id="tier-C" data-tier="C"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #7fbfff;">D</div><div class="tier-items" id="tier-D" data-tier="D"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #bf7fff;">F</div><div class="tier-items" id="tier-F" data-tier="F"></div></div>
     </div>
 
     <!-- Unranked Pool -->
     <div id="unranked-section">
-      <h3>📦 미분류 보관함 (즉시 드래그 또는 터치하여 이동)</h3>
-      <div id="unranked-pool" class="tier-items"></div>
+      <h3>📦 미분류 보관함 (자동 저장 중)</h3>
+      <div id="unranked-pool" class="tier-items" data-tier="unranked"></div>
     </div>
   </div>
 
@@ -254,50 +265,40 @@
     let isDragging = false;
     let startX = 0, startY = 0;
 
-    // File Upload Handler (이미지 왜곡 완전 방지 보정)
+    // 초기화 시 자동 저장 데이터 복원
+    window.addEventListener('DOMContentLoaded', () => {
+      loadAutoSave();
+    });
+
+    // 고화질 이미지 업로드
     document.getElementById('file-input').addEventListener('change', function(e) {
       const files = Array.from(e.target.files);
       files.forEach(file => {
         const reader = new FileReader();
         reader.onload = function(evt) {
-          const imgObj = new Image();
-          imgObj.src = evt.target.result;
-          imgObj.onload = function() {
-            // 정사각형 68x68 캔버스에 원본 비율 손실 없이 그리기
-            const canvas = document.createElement('canvas');
-            canvas.width = 68;
-            canvas.height = 68;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, 68, 68);
-
-            const scale = Math.min(68 / imgObj.width, 68 / imgObj.height);
-            const w = imgObj.width * scale;
-            const h = imgObj.height * scale;
-            const x = (68 - w) / 2;
-            const y = (68 - h) / 2;
-
-            ctx.drawImage(imgObj, x, y, w, h);
-
-            const fixedDataUrl = canvas.toDataURL('image/png');
-
-            const card = document.createElement('div');
-            card.className = 'item-card';
-
-            const img = document.createElement('img');
-            img.src = fixedDataUrl;
-            card.appendChild(img);
-
-            attachTouchAndClickEvents(card);
-            document.getElementById('unranked-pool').appendChild(card);
-          };
+          createItemCard(evt.target.result, 'unranked-pool');
+          autoSave();
         };
         reader.readAsDataURL(file);
       });
       this.value = '';
     });
 
-    // 0초 반응 초고속 터치/드래그 이벤터
+    // 아이템 카드 생성 함수 (고화질 유지)
+    function createItemCard(imgSrc, parentId) {
+      const card = document.createElement('div');
+      card.className = 'item-card';
+
+      const img = document.createElement('img');
+      img.src = imgSrc;
+      card.appendChild(img);
+
+      attachTouchAndClickEvents(card);
+      document.getElementById(parentId).appendChild(card);
+      return card;
+    }
+
+    // 초고속 터치/드래그 이벤터
     function attachTouchAndClickEvents(card) {
       let moved = false;
 
@@ -318,7 +319,7 @@
         if (deltaX > 5 || deltaY > 5) {
           moved = true;
           isDragging = true;
-          e.preventDefault(); // 스크롤 방지
+          e.preventDefault();
 
           card.classList.add('dragging');
           card.style.left = (touch.clientX - 34) + 'px';
@@ -341,11 +342,11 @@
             const container = dropTarget.closest('.tier-items');
             if (container) {
               container.appendChild(card);
+              autoSave();
             }
           }
           isDragging = false;
         } else if (!moved) {
-          // 클릭 시 이동 모달 열기
           selectedItem = card;
           document.getElementById('move-modal').classList.add('active');
         }
@@ -360,6 +361,7 @@
       } else {
         document.getElementById('tier-' + tier).appendChild(selectedItem);
       }
+      autoSave();
       closeModal('move-modal');
     }
 
@@ -368,7 +370,80 @@
       selectedItem = null;
     }
 
-    // Export Canvas
+    // 💾 백업 & 자동저장 시스템
+    function autoSave() {
+      const data = collectData();
+      localStorage.setItem('tierlist_autosave', JSON.stringify(data));
+    }
+
+    function loadAutoSave() {
+      const saved = localStorage.getItem('tierlist_autosave');
+      if (saved) {
+        restoreData(JSON.parse(saved));
+      }
+    }
+
+    function collectData() {
+      const items = [];
+      document.querySelectorAll('.item-card').forEach(card => {
+        const parent = card.parentElement;
+        const tier = parent.getAttribute('data-tier') || 'unranked';
+        const imgSrc = card.querySelector('img').src;
+        items.push({ tier, imgSrc });
+      });
+      return items;
+    }
+
+    function restoreData(data) {
+      document.querySelectorAll('.tier-items').forEach(el => el.innerHTML = '');
+      data.forEach(item => {
+        const targetId = item.tier === 'unranked' ? 'unranked-pool' : 'tier-' + item.tier;
+        createItemCard(item.imgSrc, targetId);
+      });
+    }
+
+    function exportBackup() {
+      const data = collectData();
+      if (data.length === 0) {
+        alert('백업할 아이템이 없습니다.');
+        return;
+      }
+      const jsonStr = JSON.stringify(data);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tierlist-backup-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    document.getElementById('backup-input').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const data = JSON.parse(evt.target.result);
+          restoreData(data);
+          autoSave();
+          alert('백업이 정상적으로 불러와졌습니다!');
+        } catch(err) {
+          alert('올바른 백업 파일(.json)이 아닙니다.');
+        }
+      };
+      reader.readAsText(file);
+      this.value = '';
+    });
+
+    function clearData() {
+      if (confirm('모든 내용과 저장된 데이터를 초기화하시겠습니까?')) {
+        localStorage.removeItem('tierlist_autosave');
+        document.querySelectorAll('.tier-items').forEach(el => el.innerHTML = '');
+      }
+    }
+
+    // 🖼️ 고화질 이미지 추출
     function saveAsImage() {
       const board = document.getElementById('tier-board');
       html2canvas(board, {
