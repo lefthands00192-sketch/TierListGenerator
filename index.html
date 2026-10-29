@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>티어표 생성기 Pro</title>
-  <!-- 기존 픽셀 깨짐의 원인이었던 html2canvas 삭제 및 최신 html-to-image 라이브러리로 교체 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
   <style>
     :root {
       --bg: #121316;
@@ -46,9 +44,7 @@
       font-weight: 700;
       font-size: 0.85rem;
       cursor: pointer;
-      transition: background 0.2s;
     }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-primary { background: #3b82f6; border-color: #60a5fa; }
     .btn-success { background: #10b981; border-color: #34d399; }
     .btn-danger { background: #ef4444; border-color: #f87171; }
@@ -66,7 +62,7 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     }
 
-    .tier-row { display: flex; min-height: 80px; background: #181a1f; }
+    .tier-row { display: flex; min-height: 80px; background: #181a1f; page-break-inside: avoid; }
     .tier-label {
       width: 75px;
       min-width: 75px;
@@ -90,7 +86,7 @@
       align-content: flex-start;
     }
 
-    /* 아이템 카드 고정 비율 및 이미지 렌더링 최적화 */
+    /* 아이템 카드 고정 스타일 */
     .item-card {
       width: 68px !important;
       height: 68px !important;
@@ -113,7 +109,6 @@
       height: 100%;
       object-fit: contain;
       pointer-events: none;
-      image-rendering: -webkit-optimize-contrast; /* 사파리/iOS 화질 저하 방지 */
     }
 
     /* 드래그 효과 */
@@ -179,6 +174,28 @@
       color: #000;
       cursor: pointer;
     }
+
+    /* 🖨️ 브라우저 네이티브 저장/출력 스타일 */
+    @media print {
+      body {
+        background: #000 !important;
+        color: #fff !important;
+        padding: 0 !important;
+      }
+      h1, .toolbar, #unranked-section, .modal-overlay {
+        display: none !important;
+      }
+      .container {
+        max-width: 100% !important;
+        width: 100% !important;
+      }
+      #tier-board {
+        border: none !important;
+        box-shadow: none !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -194,7 +211,7 @@
       <label class="btn" for="backup-input">📂 백업 불러오기</label>
       <input type="file" id="backup-input" accept=".json">
 
-      <button id="download-btn" class="btn" onclick="saveAsImage()">🖼️ 이미지 다운로드</button>
+      <button class="btn" onclick="saveAsImage()">🖼️ 고화질 저장 / 공유</button>
       <button class="btn btn-danger" onclick="clearData()">🔄 전체 초기화</button>
     </div>
 
@@ -428,53 +445,9 @@
       }
     }
 
-    // 🖼️ 완벽한 화질을 보장하는 html-to-image 엔진으로 변경 (직접 저장)
+    // 🖼️ 브라우저 네이티브 엔진 활용 (Canvas/외부 API 없음)
     function saveAsImage() {
-      const board = document.getElementById('tier-board');
-      const btn = document.getElementById('download-btn');
-      const originalText = btn.innerHTML;
-      
-      btn.innerHTML = '⏳ 고화질 변환 중...';
-      btn.disabled = true;
-
-      // html-to-image 라이브러리: 픽셀 배율(4배)을 강제 적용해 선명도 극대화
-      htmlToImage.toBlob(board, {
-        pixelRatio: 4, 
-        backgroundColor: '#0d0e10',
-        style: { margin: '0' }
-      }).then(function (blob) {
-        if (!blob) throw new Error('Blob 생성 실패');
-
-        const fileName = `tierlist-${new Date().toISOString().slice(0,10)}.png`;
-        const file = new File([blob], fileName, { type: 'image/png' });
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          navigator.share({
-            files: [file],
-            title: '완성된 티어표'
-          }).finally(() => {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-          });
-        } else {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = fileName;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-
-          btn.innerHTML = originalText;
-          btn.disabled = false;
-        }
-      }).catch(function (error) {
-        console.error('이미지 캡처 중 오류 발생:', error);
-        alert('이미지 저장 중 오류가 발생했습니다.');
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-      });
+      window.print();
     }
   </script>
 </body>
