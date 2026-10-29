@@ -87,7 +87,7 @@
       align-content: flex-start;
     }
 
-    /* 캡처 왜곡을 원천 차단하는 백그라운드 이미지 방식 */
+    /* 캡처 왜곡 차단 백그라운드 이미지 방식 */
     .item-card {
       width: 68px !important;
       height: 68px !important;
@@ -259,7 +259,6 @@
       loadAutoSave();
     });
 
-    // 이미지 업로드 핸들러
     document.getElementById('file-input').addEventListener('change', function(e) {
       const files = Array.from(e.target.files);
       files.forEach(file => {
@@ -273,12 +272,11 @@
       this.value = '';
     });
 
-    // 아이템 생성 (img 태그 없이 Background Image 속성으로 찌그러짐 원천 차단)
     function createItemCard(imgSrc, parentId) {
       const card = document.createElement('div');
       card.className = 'item-card';
       card.style.backgroundImage = `url("${imgSrc}")`;
-      card.setAttribute('data-src', imgSrc); // 이미지 소스 백업용 저장
+      card.setAttribute('data-src', imgSrc);
 
       attachTouchAndClickEvents(card);
       const parent = document.getElementById(parentId);
@@ -357,7 +355,6 @@
       selectedItem = null;
     }
 
-    // 💾 백업 & 자동저장 시스템
     function autoSave() {
       const data = collectData();
       localStorage.setItem('tierlist_autosave', JSON.stringify(data));
@@ -377,7 +374,7 @@
       document.querySelectorAll('.item-card').forEach(card => {
         const parent = card.parentElement;
         const tier = parent ? (parent.getAttribute('data-tier') || 'unranked') : 'unranked';
-        const imgSrc = card.getAttribute('data-src'); // 데이터 속성에서 추출
+        const imgSrc = card.getAttribute('data-src');
         if (imgSrc) items.push({ tier, imgSrc });
       });
       return items;
@@ -392,7 +389,6 @@
       });
     }
 
-    // JSON 파일 내보내기
     function exportBackup() {
       const data = collectData();
       if (data.length === 0) {
@@ -409,7 +405,6 @@
       URL.revokeObjectURL(url);
     }
 
-    // JSON 파일 불러오기 (오류 경고창 분리 완벽 해결)
     document.getElementById('backup-input').addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -417,8 +412,6 @@
       const reader = new FileReader();
       reader.onload = function(evt) {
         let parsedData = null;
-        
-        // 1단계: JSON 형식 검증
         try {
           parsedData = JSON.parse(evt.target.result);
         } catch(err) {
@@ -431,17 +424,15 @@
           return;
         }
 
-        // 2단계: 화면 렌더링
         try {
           restoreData(parsedData);
           autoSave();
-          // 팝업 없이 부드럽게 불러와지도록 성공 알림은 생략했습니다.
         } catch(err) {
           console.error(err);
         }
       };
       reader.readAsText(file);
-      this.value = ''; // 파일 선택 상태 초기화
+      this.value = '';
     });
 
     function clearData() {
@@ -451,16 +442,16 @@
       }
     }
 
-    // 🖼️ 이미지 캡처 다운로드 (비율 깨짐 차단)
+    // 🖼️ 4배율(scale: 4) 초고화질 추출
     function saveAsImage() {
       const board = document.getElementById('tier-board');
       html2canvas(board, {
         backgroundColor: '#0d0e10',
-        scale: 2, // 고해상도 유지
+        scale: 4, // 4x 초고해상도 적용
         useCORS: true,
         logging: false
       }).then(canvas => {
-        const dataUrl = canvas.toDataURL('image/png');
+        const dataUrl = canvas.toDataURL('image/png', 1.0);
         document.getElementById('result-img').src = dataUrl;
         document.getElementById('img-modal').classList.add('active');
       });
