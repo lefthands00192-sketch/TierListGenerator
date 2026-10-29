@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>티어표 생성기 Pro</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     :root {
       --bg: #121316;
@@ -52,7 +53,7 @@
     .btn-danger { background: #ef4444; border-color: #f87171; }
     #file-input, #backup-input { display: none; }
 
-    /* Tier Table */
+    /* Tier Table (UI 복원) */
     #tier-board {
       background: #0d0e10;
       border: 1px solid var(--border);
@@ -88,6 +89,7 @@
       align-content: flex-start;
     }
 
+    /* 카드 1:1 정사각형 정비율 고정 */
     .item-card {
       width: 68px !important;
       height: 68px !important;
@@ -106,12 +108,14 @@
     }
 
     .item-card img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: contain !important;
       pointer-events: none;
+      display: block;
     }
 
+    /* 드래그 효과 */
     .item-card.dragging {
       opacity: 0.85;
       position: fixed;
@@ -121,6 +125,7 @@
       box-shadow: 0 10px 20px rgba(0,0,0,0.8);
     }
 
+    /* Unranked Pool */
     #unranked-section {
       margin-top: 16px;
       background: var(--panel);
@@ -140,6 +145,7 @@
       border: 2px dashed #2e323b;
     }
 
+    /* Modal */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
@@ -187,18 +193,18 @@
       <label class="btn" for="backup-input">📂 백업 불러오기</label>
       <input type="file" id="backup-input" accept=".json">
 
-      <button id="download-btn" class="btn" onclick="saveAsImage()">🖼️ 고화질 PNG 다운로드</button>
+      <button id="download-btn" class="btn" onclick="saveAsImage()">🖼️ 이미지 다운로드</button>
       <button class="btn btn-danger" onclick="clearData()">🔄 전체 초기화</button>
     </div>
 
     <!-- Tier Board -->
     <div id="tier-board">
-      <div class="tier-row" data-name="S" data-color="#ff7f7f"><div class="tier-label" style="background: #ff7f7f;">S</div><div class="tier-items" id="tier-S" data-tier="S"></div></div>
-      <div class="tier-row" data-name="A" data-color="#ffbf7f"><div class="tier-label" style="background: #ffbf7f;">A</div><div class="tier-items" id="tier-A" data-tier="A"></div></div>
-      <div class="tier-row" data-name="B" data-color="#ffff7f"><div class="tier-label" style="background: #ffff7f;">B</div><div class="tier-items" id="tier-B" data-tier="B"></div></div>
-      <div class="tier-row" data-name="C" data-color="#7fff7f"><div class="tier-label" style="background: #7fff7f;">C</div><div class="tier-items" id="tier-C" data-tier="C"></div></div>
-      <div class="tier-row" data-name="D" data-color="#7fbfff"><div class="tier-label" style="background: #7fbfff;">D</div><div class="tier-items" id="tier-D" data-tier="D"></div></div>
-      <div class="tier-row" data-name="F" data-color="#bf7fff"><div class="tier-label" style="background: #bf7fff;">F</div><div class="tier-items" id="tier-F" data-tier="F"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #ff7f7f;">S</div><div class="tier-items" id="tier-S" data-tier="S"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #ffbf7f;">A</div><div class="tier-items" id="tier-A" data-tier="A"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #ffff7f;">B</div><div class="tier-items" id="tier-B" data-tier="B"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #7fff7f;">C</div><div class="tier-items" id="tier-C" data-tier="C"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #7fbfff;">D</div><div class="tier-items" id="tier-D" data-tier="D"></div></div>
+      <div class="tier-row"><div class="tier-label" style="background: #bf7fff;">F</div><div class="tier-items" id="tier-F" data-tier="F"></div></div>
     </div>
 
     <!-- Unranked Pool -->
@@ -334,6 +340,7 @@
       selectedItem = null;
     }
 
+    /* 💾 자동 저장 및 잔여 현상 수정 */
     function autoSave() {
       const data = collectData();
       localStorage.setItem('tierlist_autosave', JSON.stringify(data));
@@ -341,6 +348,8 @@
 
     function loadAutoSave() {
       const saved = localStorage.getItem('tierlist_autosave');
+      // 새로고침 시 미분류/티어 보관함 전체 초기화 후 정확히 재구성
+      document.querySelectorAll('.tier-items').forEach(el => el.innerHTML = '');
       if (saved) {
         try {
           restoreData(JSON.parse(saved));
@@ -421,120 +430,22 @@
       }
     }
 
-    // 🖼️ 100% 원본 비율 보존 다이렉트 PNG 생성기 (라이브러리/인쇄 제거)
-    async function saveAsImage() {
+    /* 🖼️ 화면 UI 100% 동일 유지 캡처 방식 (모바일 사파리 검은상자 방지 보정) */
+    function saveAsImage() {
+      const board = document.getElementById('tier-board');
       const btn = document.getElementById('download-btn');
       const originalText = btn.innerHTML;
-      btn.innerHTML = '⏳ 초고화질 PNG 생성 중...';
+      
+      btn.innerHTML = '⏳ 처리 중...';
       btn.disabled = true;
 
-      try {
-        const rows = document.querySelectorAll('.tier-row');
-        const scale = 4; // 초고해상도 4배율
-        const labelWidth = 80 * scale;
-        const itemSize = 70 * scale;
-        const padding = 6 * scale;
-        const gap = 6 * scale;
-        const borderGap = 2 * scale;
-        const maxCols = 8;
-
-        const canvasWidth = labelWidth + (padding * 2) + (maxCols * itemSize) + ((maxCols - 1) * gap);
-        
-        const rowHeights = [];
-        let totalHeight = 0;
-
-        rows.forEach(row => {
-          const items = row.querySelectorAll('.item-card');
-          const count = items.length;
-          const rowsCount = Math.max(1, Math.ceil(count / maxCols));
-          const rowH = (padding * 2) + (rowsCount * itemSize) + ((rowsCount - 1) * gap);
-          rowHeights.push(rowH);
-          totalHeight += rowH;
-        });
-
-        totalHeight += (rows.length - 1) * borderGap;
-
-        const canvas = document.createElement('canvas');
-        canvas.width = canvasWidth;
-        canvas.height = totalHeight;
-        const ctx = canvas.getContext('2d');
-
-        ctx.fillStyle = '#0d0e10';
-        ctx.fillRect(0, 0, canvasWidth, totalHeight);
-
-        let currentY = 0;
-
-        for (let i = 0; i < rows.length; i++) {
-          const row = rows[i];
-          const rowH = rowHeights[i];
-          const labelName = row.getAttribute('data-name');
-          const labelBg = row.getAttribute('data-color');
-          const items = row.querySelectorAll('.item-card');
-
-          ctx.fillStyle = '#141518';
-          ctx.fillRect(0, currentY, canvasWidth, rowH);
-
-          ctx.fillStyle = labelBg;
-          ctx.fillRect(0, currentY, labelWidth, rowH);
-
-          ctx.fillStyle = '#000000';
-          ctx.font = `900 ${28 * scale}px -apple-system, BlinkMacSystemFont, sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(labelName, labelWidth / 2, currentY + (rowH / 2));
-
-          let col = 0;
-          let r = 0;
-
-          for (let j = 0; j < items.length; j++) {
-            const card = items[j];
-            const imgSrc = card.getAttribute('data-src');
-
-            const x = labelWidth + padding + (col * (itemSize + gap));
-            const y = currentY + padding + (r * (itemSize + gap));
-
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(x, y, itemSize, itemSize);
-            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-            ctx.lineWidth = 1 * scale;
-            ctx.strokeRect(x, y, itemSize, itemSize);
-
-            if (imgSrc) {
-              await new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                  const imgRatio = img.width / img.height;
-                  let drawW = itemSize;
-                  let drawH = itemSize;
-                  let drawX = x;
-                  let drawY = y;
-
-                  if (imgRatio > 1) {
-                    drawH = itemSize / imgRatio;
-                    drawY = y + (itemSize - drawH) / 2;
-                  } else {
-                    drawW = itemSize * imgRatio;
-                    drawX = x + (itemSize - drawW) / 2;
-                  }
-
-                  ctx.drawImage(img, drawX, drawY, drawW, drawH);
-                  resolve();
-                };
-                img.onerror = () => resolve();
-                img.src = imgSrc;
-              });
-            }
-
-            col++;
-            if (col >= maxCols) {
-              col = 0;
-              r++;
-            }
-          }
-
-          currentY += rowH + borderGap;
-        }
-
+      html2canvas(board, {
+        backgroundColor: '#0d0e10',
+        scale: window.devicePixelRatio > 1 ? window.devicePixelRatio : 2,
+        useCORS: true,
+        logging: false,
+        allowTaint: true
+      }).then(canvas => {
         canvas.toBlob(function(blob) {
           if (!blob) {
             alert('이미지 생성에 실패했습니다.');
@@ -568,13 +479,12 @@
             btn.disabled = false;
           }
         }, 'image/png', 1.0);
-
-      } catch (err) {
+      }).catch(err => {
         console.error(err);
-        alert('이미지 생성 중 오류가 발생했습니다.');
+        alert('이미지 저장 중 오류가 발생했습니다.');
         btn.innerHTML = originalText;
         btn.disabled = false;
-      }
+      });
     }
   </script>
 </body>
