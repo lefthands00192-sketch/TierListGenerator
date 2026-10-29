@@ -87,9 +87,14 @@
       background: #141518;
       min-height: 85px;
       align-content: flex-start;
+      transition: background 0.2s;
     }
 
-    /* Item Card (비율 유지 및 찌그러짐 방지) */
+    .tier-items.drag-over {
+      background: #252a36;
+    }
+
+    /* Item Card */
     .item-card {
       width: 70px;
       height: 70px;
@@ -99,19 +104,20 @@
       overflow: hidden;
       background: #000;
       position: relative;
-      cursor: pointer;
+      cursor: grab;
       border: 1px solid rgba(255,255,255,0.1);
       box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-      touch-action: none; /* 터치 스크롤 방지 */
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
+    .item-card:active { cursor: grabbing; }
+
     .item-card img {
       width: 100%;
       height: 100%;
-      object-fit: contain; /* 비율 파괴 및 찌그러짐 완전 방지 */
+      object-fit: contain;
       pointer-events: none;
       display: block;
     }
@@ -197,7 +203,7 @@
 
     <!-- Unranked Pool -->
     <div id="unranked-section">
-      <h3>📦 미분류 보관함 (항목을 터치하여 바로 이동)</h3>
+      <h3>📦 미분류 보관함 (드래그 또는 터치하여 이동)</h3>
       <div id="unranked-pool" class="tier-items"></div>
     </div>
   </div>
@@ -214,7 +220,7 @@
         <button class="t-btn" style="background:#7fbfff;" onclick="moveTo('D')">D</button>
         <button class="t-btn" style="background:#bf7fff;" onclick="moveTo('F')">F</button>
       </div>
-      <button class="btn" style="width:100%; background:#333;" onclick="moveTo('unranked')">미분류로 보낼기</button>
+      <button class="btn" style="width:100%; background:#333;" onclick="moveTo('unranked')">미분류로 이동</button>
       <button class="btn" style="width:100%; margin-top:6px; background:#181818;" onclick="closeModal('move-modal')">취소</button>
     </div>
   </div>
@@ -231,6 +237,7 @@
 
   <script>
     let selectedItem = null;
+    let draggedElement = null;
 
     // File Upload Handler
     document.getElementById('file-input').addEventListener('change', function(e) {
@@ -240,16 +247,29 @@
         reader.onload = function(evt) {
           const card = document.createElement('div');
           card.className = 'item-card';
+          card.draggable = true;
 
           const img = document.createElement('img');
           img.src = evt.target.result;
           card.appendChild(img);
 
-          // 클릭/터치 이벤트 (스크롤 방섭 없이 즉시 이동 팝업)
+          // 1. 클릭/터치 시 팝업 열기
           card.addEventListener('click', function(e) {
             e.stopPropagation();
             selectedItem = card;
             document.getElementById('move-modal').classList.add('active');
+          });
+
+          // 2. 드래그 앤 드랍 이벤트
+          card.addEventListener('dragstart', function(e) {
+            draggedElement = card;
+            e.dataTransfer.setData('text/plain', '');
+            setTimeout(() => card.style.opacity = '0.4', 0);
+          });
+
+          card.addEventListener('dragend', function() {
+            card.style.opacity = '1';
+            draggedElement = null;
           });
 
           document.getElementById('unranked-pool').appendChild(card);
@@ -257,6 +277,27 @@
         reader.readAsDataURL(file);
       });
       this.value = '';
+    });
+
+    // Drop Zone Setup
+    const dropZones = document.querySelectorAll('.tier-items');
+    dropZones.forEach(zone => {
+      zone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        zone.classList.add('drag-over');
+      });
+
+      zone.addEventListener('dragleave', function() {
+        zone.classList.remove('drag-over');
+      });
+
+      zone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        if (draggedElement) {
+          zone.appendChild(draggedElement);
+        }
+      });
     });
 
     function moveTo(tier) {
@@ -274,12 +315,12 @@
       selectedItem = null;
     }
 
-    // Export High-Res Canvas
+    // Export Canvas
     function saveAsImage() {
       const board = document.getElementById('tier-board');
       html2canvas(board, {
         backgroundColor: '#0d0e10',
-        scale: 2, // 고화질 캡처
+        scale: 2,
         useCORS: true
       }).then(canvas => {
         const dataUrl = canvas.toDataURL('image/png');
