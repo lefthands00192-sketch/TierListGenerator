@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>티어표 생성기 Pro</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- 기존 픽셀 깨짐의 원인이었던 html2canvas 삭제 및 최신 html-to-image 라이브러리로 교체 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
   <style>
     :root {
       --bg: #121316;
@@ -89,7 +90,7 @@
       align-content: flex-start;
     }
 
-    /* 캡처 왜곡 차단 백그라운드 이미지 방식 */
+    /* 아이템 카드 고정 비율 및 이미지 렌더링 최적화 */
     .item-card {
       width: 68px !important;
       height: 68px !important;
@@ -97,14 +98,22 @@
       min-height: 68px !important;
       border-radius: 6px;
       background-color: #000;
-      background-size: contain;
-      background-position: center;
-      background-repeat: no-repeat;
       position: relative;
       border: 1px solid rgba(255,255,255,0.15);
       touch-action: none;
-      display: block;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .item-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      image-rendering: -webkit-optimize-contrast; /* 사파리/iOS 화질 저하 방지 */
     }
 
     /* 드래그 효과 */
@@ -249,8 +258,11 @@
     function createItemCard(imgSrc, parentId) {
       const card = document.createElement('div');
       card.className = 'item-card';
-      card.style.backgroundImage = `url("${imgSrc}")`;
       card.setAttribute('data-src', imgSrc);
+
+      const img = document.createElement('img');
+      img.src = imgSrc;
+      card.appendChild(img);
 
       attachTouchAndClickEvents(card);
       const parent = document.getElementById(parentId);
@@ -416,61 +428,49 @@
       }
     }
 
-    // 🖼️ 모달창 제거 & 다이렉트 고화질 다운로드/공유
+    // 🖼️ 완벽한 화질을 보장하는 html-to-image 엔진으로 변경 (직접 저장)
     function saveAsImage() {
       const board = document.getElementById('tier-board');
       const btn = document.getElementById('download-btn');
       const originalText = btn.innerHTML;
       
-      btn.innerHTML = '⏳ 처리 중...';
+      btn.innerHTML = '⏳ 고화질 변환 중...';
       btn.disabled = true;
 
-      html2canvas(board, {
+      // html-to-image 라이브러리: 픽셀 배율(4배)을 강제 적용해 선명도 극대화
+      htmlToImage.toBlob(board, {
+        pixelRatio: 4, 
         backgroundColor: '#0d0e10',
-        scale: 4, // 4x 초고해상도 원본 렌더링 유지
-        useCORS: true,
-        logging: false
-      }).then(canvas => {
-        canvas.toBlob(function(blob) {
-          if (!blob) {
-            alert('이미지 생성에 실패했습니다.');
+        style: { margin: '0' }
+      }).then(function (blob) {
+        if (!blob) throw new Error('Blob 생성 실패');
+
+        const fileName = `tierlist-${new Date().toISOString().slice(0,10)}.png`;
+        const file = new File([blob], fileName, { type: 'image/png' });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({
+            files: [file],
+            title: '완성된 티어표'
+          }).finally(() => {
             btn.innerHTML = originalText;
             btn.disabled = false;
-            return;
-          }
+          });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
 
-          const fileName = `tierlist-${new Date().toISOString().slice(0,10)}.png`;
-          const file = new File([blob], fileName, { type: 'image/png' });
-
-          // 1. 모바일 기기 네이티브 저장/공유 (Web Share API - iOS/Android)
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            navigator.share({
-              files: [file],
-              title: '완성된 티어표'
-            }).catch(err => {
-              console.log('공유 취소 또는 에러:', err);
-            }).finally(() => {
-              btn.innerHTML = originalText;
-              btn.disabled = false;
-            });
-          } 
-          // 2. PC 브라우저 또는 Share API 미지원 환경 다이렉트 다운로드
-          else {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-          }
-        }, 'image/png', 1.0); // 1.0 최고 품질로 Blob 변환
-      }).catch(err => {
-        console.error(err);
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        }
+      }).catch(function (error) {
+        console.error('이미지 캡처 중 오류 발생:', error);
         alert('이미지 저장 중 오류가 발생했습니다.');
         btn.innerHTML = originalText;
         btn.disabled = false;
