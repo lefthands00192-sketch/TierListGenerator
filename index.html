@@ -1,890 +1,142 @@
 <!DOCTYPE html>
-<html lang="ko" class="dark">
+<html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>티어표 메이커 (Tier List Maker)</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        darkbg: '#12131C',
-                        darkcard: '#1A1C29',
-                        darkaccent: '#26293D',
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'Noto Sans KR', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- html2canvas for Image Export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <style>
-        /* Smooth scrolling & UI touch improvements */
-        * {
-            touch-action: manipulation;
-        }
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #12131C;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #2D3148;
-            border-radius: 4px;
-        }
-        
-        .drag-over {
-            outline: 2px dashed #6366f1 !important;
-            background-color: rgba(99, 102, 241, 0.15) !important;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>티어표 만들기</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #121212; color: #fff; padding: 12px; }
+    h1 { text-align: center; font-size: 1.4rem; margin-bottom: 12px; }
+    
+    .toolbar { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 15px; }
+    .btn { background: #333; color: #fff; border: 1px solid #555; padding: 8px 12px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; }
+    .btn-primary { background: #2563eb; border-color: #3b82f6; }
+    #file-input { display: none; }
 
-        /* High-performance touch dragging ghost element */
-        .touch-ghost {
-            position: fixed !important;
-            pointer-events: none !important;
-            z-index: 9999 !important;
-            opacity: 0.85;
-            transform: scale(1.08) translate3d(0,0,0);
-            will-change: transform, left, top;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.6);
-            border: 2px solid #6366f1;
-        }
+    #tier-board { background: #000; border: 1px solid #444; border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; gap: 2px; }
+    .tier-row { display: flex; min-height: 80px; background: #222; }
+    .tier-label { width: 70px; min-width: 70px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; color: #000; text-align: center; }
+    .tier-items { flex: 1; display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; background: #1a1a1a; min-height: 80px; align-content: flex-start; }
 
-        .item-card {
-            will-change: transform;
-            transition: transform 0.12s ease;
-        }
-        
-        .item-card:active {
-            transform: scale(0.95);
-        }
-    </style>
+    .item-card { width: 65px; height: 65px; border-radius: 4px; overflow: hidden; background: #333; position: relative; cursor: pointer; border: 1px solid #555; }
+    .item-card img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+
+    #unranked-section { margin-top: 15px; background: #222; padding: 10px; border-radius: 6px; border: 1px solid #444; }
+    #unranked-section h3 { font-size: 0.9rem; margin-bottom: 8px; color: #aaa; }
+    #unranked-pool { min-height: 90px; display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; background: #141414; border-radius: 4px; border: 1px dashed #555; }
+
+    /* 모달 */
+    .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:none; justify-content:center; align-items:center; z-index:9999; }
+    .modal-overlay.active { display:flex; }
+    .modal-box { background:#2a2a2a; padding:15px; border-radius:10px; width:85%; max-width:300px; text-align:center; }
+    .modal-box h3 { margin-bottom:12px; font-size:1rem; }
+    .tier-btns { display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:12px; }
+    .t-btn { padding:10px; border:none; border-radius:4px; font-weight:bold; font-size:1rem; color:#000; }
+    .preview-img { width:100%; max-height:60vh; object-fit:contain; margin-bottom:10px; }
+  </style>
 </head>
-<body class="bg-darkbg text-slate-100 min-h-screen flex flex-col font-sans select-none">
+<body>
 
-    <!-- Header Navbar -->
-    <header class="bg-darkcard border-b border-slate-800 py-3.5 px-4 sm:px-8 sticky top-0 z-30 shadow-md">
-        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-rose-500 flex items-center justify-center font-black text-lg shadow-lg">
-                    T
-                </div>
-                <div>
-                    <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-                        나만의 티어표 메이커
-                    </h1>
-                    <p class="text-[11px] text-slate-400">클릭하거나 끌어서 빠르게 티어를 분류하세요</p>
-                </div>
-            </div>
+  <h1>🏆 티어표 생성기</h1>
 
-            <!-- Action Toolbar -->
-            <div class="flex flex-wrap items-center gap-2">
-                <button id="exportJsonBtn" class="px-3 py-1.5 bg-darkaccent hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition border border-slate-700 flex items-center gap-1.5">
-                    <i class="fa-solid fa-file-export text-slate-400"></i> 백업 저장
-                </button>
-                <button id="importJsonBtn" class="px-3 py-1.5 bg-darkaccent hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition border border-slate-700 flex items-center gap-1.5">
-                    <i class="fa-solid fa-file-import text-slate-400"></i> 불러오기
-                </button>
-                <input type="file" id="jsonFileInput" accept=".json,application/json" class="hidden">
+  <div class="toolbar">
+    <label class="btn btn-primary" for="file-input">📷 이미지 추가</label>
+    <input type="file" id="file-input" multiple accept="image/*">
+    <button class="btn" onclick="saveAsImage()">💾 이미지 저장</button>
+  </div>
 
-                <button id="downloadBtn" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5 shadow-md shadow-emerald-900/20">
-                    <i class="fa-solid fa-download"></i> 이미지 저장
-                </button>
-            </div>
-        </div>
-    </header>
+  <div id="tier-board">
+    <div class="tier-row"><div class="tier-label" style="background:#ff7f7f;">S</div><div class="tier-items" id="tier-S"></div></div>
+    <div class="tier-row"><div class="tier-label" style="background:#ffbf7f;">A</div><div class="tier-items" id="tier-A"></div></div>
+    <div class="tier-row"><div class="tier-label" style="background:#ffff7f;">B</div><div class="tier-items" id="tier-B"></div></div>
+    <div class="tier-row"><div class="tier-label" style="background:#7fff7f;">C</div><div class="tier-items" id="tier-C"></div></div>
+    <div class="tier-row"><div class="tier-label" style="background:#7fbfff;">D</div><div class="tier-items" id="tier-D"></div></div>
+    <div class="tier-row"><div class="tier-label" style="background:#bf7fff;">F</div><div class="tier-items" id="tier-F"></div></div>
+  </div>
 
-    <!-- Main Workspace -->
-    <main class="max-w-7xl mx-auto w-full flex-1 p-3 sm:p-6 space-y-5">
+  <div id="unranked-section">
+    <h3>📦 미분류 목록 (클릭하여 이동)</h3>
+    <div id="unranked-pool" class="tier-items"></div>
+  </div>
 
-        <!-- Controls Toolbar -->
-        <div class="bg-darkcard border border-slate-800 rounded-2xl p-3.5 shadow-xl flex flex-col md:flex-row justify-between gap-3 items-center">
-            
-            <!-- Upload & Text Card Controls -->
-            <div class="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
-                <label class="cursor-pointer px-3.5 py-2 bg-indigo-600/20 border border-indigo-500/40 hover:bg-indigo-600/30 text-indigo-300 font-medium rounded-xl transition flex items-center gap-2 text-xs sm:text-sm">
-                    <i class="fa-solid fa-images text-indigo-400"></i>
-                    <span>이미지 선택 (다중 선택 가능)</span>
-                    <input type="file" id="imageUpload" multiple accept="image/*" class="hidden">
-                </label>
-
-                <div class="flex items-center gap-1.5 flex-1 sm:flex-initial">
-                    <input type="text" id="textCardInput" placeholder="카드 이름..." class="bg-darkbg border border-slate-700 text-xs sm:text-sm rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500 w-28 sm:w-36">
-                    <button id="addTextCardBtn" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs sm:text-sm rounded-xl transition font-medium whitespace-nowrap">
-                        <i class="fa-solid fa-plus"></i> 카드
-                    </button>
-                </div>
-            </div>
-
-            <!-- Tier Customization Buttons -->
-            <div class="flex items-center gap-2 w-full md:w-auto justify-end">
-                <button id="addTierBtn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-medium rounded-xl transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-layer-group text-amber-400"></i> 티어 추가
-                </button>
-                <button id="resetBtn" class="px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 text-xs font-medium rounded-xl transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-rotate-left"></i> 전체 초기화
-                </button>
-            </div>
-        </div>
-
-        <!-- Tier List Board -->
-        <div id="tierboard" class="bg-darkbg p-2.5 sm:p-4 rounded-2xl border border-slate-800/80 shadow-2xl space-y-2">
-            <!-- Dynamically Rendered Tier Rows -->
-        </div>
-
-        <!-- Unranked Pool Section -->
-        <div class="bg-darkcard border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-2.5">
-                <div class="flex items-center gap-2">
-                    <h2 class="font-bold text-slate-200 text-sm sm:text-base flex items-center gap-2">
-                        <i class="fa-solid fa-box-archive text-indigo-400"></i> 미분류 아이템 보관함
-                    </h2>
-                    <span id="unrankedCount" class="bg-slate-800 text-slate-400 text-xs px-2 py-0.5 rounded-full font-mono">0</span>
-                </div>
-                <button id="clearUnrankedBtn" class="text-xs text-slate-400 hover:text-rose-400 transition flex items-center gap-1">
-                    <i class="fa-solid fa-trash-can"></i> 비우기
-                </button>
-            </div>
-
-            <!-- Drop Zone for Unranked Items -->
-            <div id="unrankedPool" class="min-h-[120px] p-2.5 rounded-xl bg-darkbg border-2 border-dashed border-slate-800/80 flex flex-wrap gap-2 items-start justify-start transition-colors relative">
-                <div id="poolPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 pointer-events-none p-4 text-center">
-                    <i class="fa-solid fa-cloud-arrow-up text-2xl mb-1 text-slate-600"></i>
-                    <p class="text-xs">이곳을 터치하여 이미지를 추가하거나 직접 파일을 끌어다 놓으세요.</p>
-                </div>
-            </div>
-        </div>
-
-    </main>
-
-    <!-- Quick Move Modal (Click / Tap to Move) -->
-    <div id="quickMoveModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-darkcard border border-slate-700 rounded-2xl w-full max-w-xs p-4 shadow-2xl space-y-3">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <i class="fa-solid fa-arrow-up-right-from-square text-indigo-400"></i> 등급 선택 이동
-                </h3>
-                <button id="closeQuickMoveBtn" class="text-slate-400 hover:text-white p-1 text-xs">
-                    <i class="fa-solid fa-xmark text-sm"></i>
-                </button>
-    <!-- Image Save / Mobile Fallback Modal -->
-    <div id="imageSaveModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-darkcard border border-slate-700 rounded-2xl w-full max-w-lg p-5 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <i class="fa-solid fa-image text-emerald-400"></i> 완성된 티어표 이미지
-                </h3>
-                <button id="closeImageModalBtn" class="text-slate-400 hover:text-white p-1 text-xs">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <p class="text-xs text-amber-300 bg-amber-950/40 border border-amber-800/50 p-2.5 rounded-xl">
-                💡 <b>모바일 사용자 안내:</b> 다운로드가 안 된 경우 아래 이미지를 <b>길게 눌러 [사진에 저장] 또는 [이미지 저장]</b>을 선택하세요.
-            </p>
-
-            <div class="flex-1 overflow-y-auto bg-darkbg p-2 rounded-xl border border-slate-800 flex items-center justify-center min-h-[180px]">
-                <img id="generatedImagePreview" class="max-w-full h-auto rounded-lg shadow-lg border border-slate-700" alt="Tier List Result">
-            </div>
-
-            <div class="flex justify-between items-center pt-2 border-t border-slate-800 gap-2">
-                <a id="directImageDownloadLink" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition flex items-center gap-2">
-                    <i class="fa-solid fa-download"></i> 직접 파일 다운로드
-                </a>
-                <button id="closeImageModalBtn2" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium">닫기</button>
-            </div>
-        </div>
+  <!-- 이동 모달 -->
+  <div class="modal-overlay" id="move-modal">
+    <div class="modal-box">
+      <h3>이동할 등급 선택</h3>
+      <div class="tier-btns">
+        <button class="t-btn" style="background:#ff7f7f;" onclick="moveTo('S')">S</button>
+        <button class="t-btn" style="background:#ffbf7f;" onclick="moveTo('A')">A</button>
+        <button class="t-btn" style="background:#ffff7f;" onclick="moveTo('B')">B</button>
+        <button class="t-btn" style="background:#7fff7f;" onclick="moveTo('C')">C</button>
+        <button class="t-btn" style="background:#7fbfff;" onclick="moveTo('D')">D</button>
+        <button class="t-btn" style="background:#bf7fff;" onclick="moveTo('F')">F</button>
+      </div>
+      <button class="btn" style="width:100%; background:#444;" onclick="moveTo('unranked')">미분류로 이동</button>
+      <button class="btn" style="width:100%; margin-top:6px; background:#222;" onclick="closeModal('move-modal')">취소</button>
     </div>
+  </div>
 
-    <!-- JSON Backup Fallback Modal -->
-    <div id="jsonBackupModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-darkcard border border-slate-700 rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-3">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <i class="fa-solid fa-code text-indigo-400"></i> 백업 데이터 텍스트
-                </h3>
-                <button id="closeJsonModalBtn" class="text-slate-400 hover:text-white p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-            <p class="text-xs text-slate-400">파일 다운로드가 제한된 환경입니다. 아래 텍스트를 복사하여 보관하세요:</p>
-            <textarea id="jsonBackupTextarea" class="w-full h-40 bg-darkbg border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-300 focus:outline-none focus:border-indigo-500 select-all"></textarea>
-            <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
-                <button id="copyJsonTextBtn" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-medium flex items-center gap-1.5">
-                    <i class="fa-solid fa-copy"></i> 복사하기
-                </button>
-                <button id="closeJsonModalBtn2" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium">닫기</button>
-            </div>
-        </div>
+  <!-- 이미지 결과 모달 -->
+  <div class="modal-overlay" id="img-modal">
+    <div class="modal-box">
+      <h3>티어표 완성!</h3>
+      <p style="font-size:0.8rem; color:#aaa; margin-bottom:8px;">이미지를 길게 눌러 사진 앱에 저장하세요.</p>
+      <img id="result-img" class="preview-img">
+      <button class="btn" style="width:100%;" onclick="closeModal('img-modal')">닫기</button>
     </div>
-
-    <!-- Notification Toast -->
-    <div id="toast" class="fixed bottom-5 right-5 bg-indigo-600 text-white text-xs px-4 py-2.5 rounded-xl shadow-2xl transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-2">
-        <i class="fa-solid fa-circle-check"></i> <span id="toastMsg">알림 메세지</span>
-    </div>
-
-    <script>
-        // Default Tier Configurations
-        const DEFAULT_TIERS = [
-            { id: 'tier-s', title: 'S', color: '#ff7f7f' },
-            { id: 'tier-a', title: 'A', color: '#ffbf7f' },
-            { id: 'tier-b', title: 'B', color: '#ffff7f' },
-            { id: 'tier-c', title: 'C', color: '#7fff7f' },
-            { id: 'tier-d', title: 'D', color: '#7fbfff' },
-            { id: 'tier-f', title: 'F', color: '#bf7fff' }
-        ];
-
-        const PRESET_COLORS = [
-            '#ff7f7f', '#ffbf7f', '#ffff7f', '#7fff7f', 
-            '#7fbfff', '#7f7fff', '#ff7fff', '#bf7fff',
-            '#3b82f6', '#10b981', '#f59e0b', '#ef4444'
-        ];
-
-        // App States
-        let tiers = JSON.parse(localStorage.getItem('tierlist_tiers')) || DEFAULT_TIERS;
-        let items = JSON.parse(localStorage.getItem('tierlist_items')) || [];
-        
-        let editingTierId = null;
-        let activeItemIdForMove = null;
-        let draggedItemId = null;
-
-        // DOM Elements
-        const tierboard = document.getElementById('tierboard');
-        const unrankedPool = document.getElementById('unrankedPool');
-        const poolPlaceholder = document.getElementById('poolPlaceholder');
-        const unrankedCount = document.getElementById('unrankedCount');
-        const imageUpload = document.getElementById('imageUpload');
-        const textCardInput = document.getElementById('textCardInput');
-        const addTextCardBtn = document.getElementById('addTextCardBtn');
-        const addTierBtn = document.getElementById('addTierBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        const clearUnrankedBtn = document.getElementById('clearUnrankedBtn');
-        const exportJsonBtn = document.getElementById('exportJsonBtn');
-        const importJsonBtn = document.getElementById('importJsonBtn');
-        const jsonFileInput = document.getElementById('jsonFileInput');
-        const downloadBtn = document.getElementById('downloadBtn');
-
-        // Image Save Modal Elements
-        const imageSaveModal = document.getElementById('imageSaveModal');
-        const generatedImagePreview = document.getElementById('generatedImagePreview');
-        const directImageDownloadLink = document.getElementById('directImageDownloadLink');
-        const closeImageModalBtn = document.getElementById('closeImageModalBtn');
-        const closeImageModalBtn2 = document.getElementById('closeImageModalBtn2');
-
-        // JSON Backup Modal Elements
-        const jsonBackupModal = document.getElementById('jsonBackupModal');
-        const jsonBackupTextarea = document.getElementById('jsonBackupTextarea');
-        const copyJsonTextBtn = document.getElementById('copyJsonTextBtn');
-        const closeJsonModalBtn = document.getElementById('closeJsonModalBtn');
-        const closeJsonModalBtn2 = document.getElementById('closeJsonModalBtn2');
-
-        // Modals
-        const quickMoveModal = document.getElementById('quickMoveModal');
-        const quickMoveTargets = document.getElementById('quickMoveTargets');
-        const deleteActiveItemBtn = document.getElementById('deleteActiveItemBtn');
-        const closeQuickMoveBtn = document.getElementById('closeQuickMoveBtn');
-        const closeQuickMoveBtn2 = document.getElementById('closeQuickMoveBtn2');
-
-        const tierModal = document.getElementById('tierModal');
-        const modalTierTitle = document.getElementById('modalTierTitle');
-        const modalTierColor = document.getElementById('modalTierColor');
-        const modalTierColorHex = document.getElementById('modalTierColorHex');
-        const closeModalBtn = document.getElementById('closeModalBtn');
-        const saveModalBtn = document.getElementById('saveModalBtn');
-        const presetColorsContainer = document.getElementById('presetColorsContainer');
-
-        // Application Init
-        function init() {
-            renderPresetColors();
-            renderTiers();
-            renderItems();
-            setupEventListeners();
-        }
-
-        function saveState() {
-            try {
-                localStorage.setItem('tierlist_tiers', JSON.stringify(tiers));
-                localStorage.setItem('tierlist_items', JSON.stringify(items));
-            } catch (e) {
-                console.warn('Storage quota exceeded');
-            }
-            updateUnrankedCount();
-        }
-
-        function renderPresetColors() {
-            presetColorsContainer.innerHTML = '';
-            PRESET_COLORS.forEach(color => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'w-6 h-6 rounded-full border border-slate-600 hover:scale-110 transition shadow';
-                btn.style.backgroundColor = color;
-                btn.addEventListener('click', () => {
-                    modalTierColor.value = color;
-                    modalTierColorHex.value = color.toUpperCase();
-                });
-                presetColorsContainer.appendChild(btn);
-            });
-        }
-
-        // Render Tier Board Rows
-        function renderTiers() {
-            tierboard.innerHTML = '';
-            tiers.forEach((tier, index) => {
-                const tierRow = document.createElement('div');
-                tierRow.className = 'tier-row flex flex-col sm:flex-row bg-darkcard border border-slate-800/80 rounded-xl overflow-hidden shadow-sm transition';
-                tierRow.dataset.tierId = tier.id;
-
-                const labelBox = document.createElement('div');
-                labelBox.className = 'w-full sm:w-28 md:w-32 flex-shrink-0 p-2.5 flex sm:flex-col items-center justify-between sm:justify-center text-center font-black text-xl select-none relative group/label min-h-[60px]';
-                labelBox.style.backgroundColor = tier.color;
-                labelBox.style.color = getContrastColor(tier.color);
-
-                const titleSpan = document.createElement('span');
-                titleSpan.className = 'break-all font-extrabold tracking-wide px-1';
-                titleSpan.textContent = tier.title;
-
-                const controls = document.createElement('div');
-                controls.className = 'flex items-center gap-1 opacity-90 sm:opacity-0 group-hover/label:opacity-100 transition-opacity bg-black/30 p-1 rounded-lg backdrop-blur-xs text-xs';
-                controls.style.color = '#ffffff';
-
-                controls.innerHTML = `
-                    <button class="edit-tier-btn p-1 hover:text-amber-300 transition" title="수정"><i class="fa-solid fa-pen"></i></button>
-                    <button class="up-tier-btn p-1 hover:text-indigo-300 transition ${index === 0 ? 'opacity-30 cursor-not-allowed' : ''}"><i class="fa-solid fa-arrow-up"></i></button>
-                    <button class="down-tier-btn p-1 hover:text-indigo-300 transition ${index === tiers.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}"><i class="fa-solid fa-arrow-down"></i></button>
-                    <button class="delete-tier-btn p-1 hover:text-rose-300 transition"><i class="fa-solid fa-trash"></i></button>
-                `;
-
-                labelBox.appendChild(titleSpan);
-                labelBox.appendChild(controls);
-
-                const itemsContainer = document.createElement('div');
-                itemsContainer.className = 'tier-items-container flex-1 p-2 bg-darkbg/60 min-h-[75px] flex flex-wrap gap-2 items-center transition-colors';
-                itemsContainer.dataset.tierId = tier.id;
-
-                // Event Listeners for Tier Controls
-                controls.querySelector('.edit-tier-btn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    openTierModal(tier.id);
-                });
-
-                controls.querySelector('.up-tier-btn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (index > 0) {
-                        const temp = tiers[index];
-                        tiers[index] = tiers[index - 1];
-                        tiers[index - 1] = temp;
-                        saveState();
-                        renderTiers();
-                        renderItems();
-                    }
-                });
-
-                controls.querySelector('.down-tier-btn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (index < tiers.length - 1) {
-                        const temp = tiers[index];
-                        tiers[index] = tiers[index + 1];
-                        tiers[index + 1] = temp;
-                        saveState();
-                        renderTiers();
-                        renderItems();
-                    }
-                });
-
-                controls.querySelector('.delete-tier-btn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (confirm(`'${tier.title}' 티어를 삭제하시겠습니까? 안의 아이템은 미분류로 이동합니다.`)) {
-                        items.forEach(item => {
-                            if (item.tierId === tier.id) item.tierId = 'unranked';
-                        });
-                        tiers = tiers.filter(t => t.id !== tier.id);
-                        saveState();
-                        renderTiers();
-                        renderItems();
-                    }
-                });
-
-                setupDropZone(itemsContainer);
-
-                tierRow.appendChild(labelBox);
-                tierRow.appendChild(itemsContainer);
-                tierboard.appendChild(tierRow);
-            });
-
-            setupDropZone(unrankedPool);
-        }
-
-        // Render Items inside Tiers / Pool
-        function renderItems() {
-            document.querySelectorAll('.tier-items-container').forEach(c => c.innerHTML = '');
-            unrankedPool.innerHTML = '';
-            unrankedPool.appendChild(poolPlaceholder);
-
-            const unrankedItems = items.filter(i => i.tierId === 'unranked' || !i.tierId);
-            if (unrankedItems.length > 0) {
-                poolPlaceholder.classList.add('hidden');
-            } else {
-                poolPlaceholder.classList.remove('hidden');
-            }
-
-            items.forEach(item => {
-                const itemEl = createItemCardElement(item);
-
-                if (item.tierId === 'unranked' || !item.tierId) {
-                    unrankedPool.appendChild(itemEl);
-                } else {
-                    const targetContainer = document.querySelector(`.tier-items-container[data-tier-id="${item.tierId}"]`);
-                    if (targetContainer) {
-                        targetContainer.appendChild(itemEl);
-                    } else {
-                        item.tierId = 'unranked';
-                        unrankedPool.appendChild(itemEl);
-                    }
-                }
-            });
-
-            updateUnrankedCount();
-        }
-
-        // Create DOM Element for Single Card
-        function createItemCardElement(item) {
-            const div = document.createElement('div');
-            div.className = 'item-card relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden shadow border border-slate-700 bg-darkcard flex items-center justify-center cursor-pointer select-none group';
-            div.draggable = true;
-            div.dataset.id = item.id;
-
-            if (item.type === 'image') {
-                const img = document.createElement('img');
-                img.src = item.content;
-                img.alt = 'Card Image';
-                img.className = 'w-full h-full object-cover pointer-events-none';
-                div.appendChild(img);
-            } else {
-                div.style.backgroundColor = item.bgColor || '#334155';
-                const span = document.createElement('span');
-                span.className = 'p-1.5 text-center text-xs font-bold break-words line-clamp-3 select-none';
-                span.style.color = getContrastColor(item.bgColor || '#334155');
-                span.textContent = item.content;
-                div.appendChild(span);
-            }
-
-            // Click/Tap Event: Open Quick Move Popup
-            div.addEventListener('click', (e) => {
-                e.stopPropagation();
-                openQuickMoveModal(item.id);
-            });
-
-            // HTML5 Drag Event for Desktop
-            div.addEventListener('dragstart', (e) => {
-                draggedItemId = item.id;
-                e.dataTransfer.setData('text/plain', item.id);
-                div.classList.add('opacity-40');
-            });
-
-            div.addEventListener('dragend', () => {
-                div.classList.remove('opacity-40');
-                draggedItemId = null;
-                document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-            });
-
-            // High-Performance Touch Drag Support for Mobile
-            setupOptimizedTouchDrag(div, item);
-
-            return div;
-        }
-
-        // High-Performance Mobile Touch Drag & Drop
-        function setupOptimizedTouchDrag(element, item) {
-            let ghostEl = null;
-            let startX = 0, startY = 0;
-            let isDragging = false;
-
-            element.addEventListener('touchstart', (e) => {
-                const touch = e.touches[0];
-                startX = touch.clientX;
-                startY = touch.clientY;
-                isDragging = false;
-            }, { passive: true });
-
-            element.addEventListener('touchmove', (e) => {
-                const touch = e.touches[0];
-                const deltaX = Math.abs(touch.clientX - startX);
-                const deltaY = Math.abs(touch.clientY - startY);
-
-                if (!isDragging && (deltaX > 8 || deltaY > 8)) {
-                    isDragging = true;
-                    ghostEl = element.cloneNode(true);
-                    ghostEl.classList.add('touch-ghost');
-                    document.body.appendChild(ghostEl);
-                    element.classList.add('opacity-30');
-                }
-
-                if (isDragging && ghostEl) {
-                    e.preventDefault();
-                    ghostEl.style.left = `${touch.clientX - 35}px`;
-                    ghostEl.style.top = `${touch.clientY - 35}px`;
-                }
-            }, { passive: false });
-
-            element.addEventListener('touchend', (e) => {
-                if (ghostEl) {
-                    const touch = e.changedTouches[0];
-                    ghostEl.remove();
-                    ghostEl = null;
-                    element.classList.remove('opacity-30');
-
-                    // Check Drop Target at Touch End Coordinates
-                    const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
-                    if (targetEl) {
-                        const dropZone = targetEl.closest('.tier-items-container, #unrankedPool');
-                        if (dropZone) {
-                            const targetTierId = dropZone.dataset.tierId || 'unranked';
-                            moveItemToTier(item.id, targetTierId);
-                        }
-                    }
-                }
-            });
-        }
-
-        function setupDropZone(targetEl) {
-            targetEl.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                targetEl.classList.add('drag-over');
-            });
-
-            targetEl.addEventListener('dragleave', () => {
-                targetEl.classList.remove('drag-over');
-            });
-
-            targetEl.addEventListener('drop', (e) => {
-                e.preventDefault();
-                targetEl.classList.remove('drag-over');
-
-                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                    processImageFiles(Array.from(e.dataTransfer.files));
-                    return;
-                }
-
-                const itemId = e.dataTransfer.getData('text/plain') || draggedItemId;
-                if (itemId) {
-                    const targetTierId = targetEl.dataset.tierId || 'unranked';
-                    moveItemToTier(itemId, targetTierId);
-                }
-            });
-        }
-
-        // Process File Uploads
-        function processImageFiles(files) {
-            const imageFiles = files.filter(f => f.type.startsWith('image/'));
-            if (imageFiles.length === 0) {
-                showToast('이미지 파일만 업로드할 수 있습니다.');
-                return;
-            }
-
-            showToast(`${imageFiles.length}개의 이미지 처리 중...`);
-            let count = 0;
-
-            imageFiles.forEach(file => {
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    items.push({
-                        id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-                        type: 'image',
-                        content: evt.target.result,
-                        tierId: 'unranked'
-                    });
-
-                    count++;
-                    if (count === imageFiles.length) {
-                        saveState();
-                        renderItems();
-                        showToast(`${imageFiles.length}개의 이미지가 보관함에 추가되었습니다.`);
-                        imageUpload.value = '';
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-
-        function moveItemToTier(itemId, targetTierId) {
-            const item = items.find(i => i.id === itemId);
-            if (item) {
-                item.tierId = targetTierId;
-                saveState();
-                renderItems();
-            }
-        }
-
-        function openQuickMoveModal(itemId) {
-            activeItemIdForMove = itemId;
-            quickMoveTargets.innerHTML = '';
-
-            // Option to move to Unranked Pool
-            const unrankedBtn = document.createElement('button');
-            unrankedBtn.className = 'w-full col-span-2 text-left px-3 py-2 bg-darkbg hover:bg-slate-800 rounded-xl text-xs text-slate-300 font-semibold border border-slate-700 flex items-center gap-2 transition';
-            unrankedBtn.innerHTML = `<i class="fa-solid fa-box-archive text-indigo-400"></i> 미분류 보관함으로 이동`;
-            unrankedBtn.addEventListener('click', () => {
-                moveItemToTier(activeItemIdForMove, 'unranked');
-                closeQuickMoveModal();
-            });
-            quickMoveTargets.appendChild(unrankedBtn);
-
-            // Tier Buttons
-            tiers.forEach(tier => {
-                const btn = document.createElement('button');
-                btn.className = 'w-full text-left px-3 py-2.5 rounded-xl text-xs font-extrabold flex items-center justify-between border border-slate-700/50 shadow-sm transition transform hover:scale-105';
-                btn.style.backgroundColor = tier.color;
-                btn.style.color = getContrastColor(tier.color);
-                btn.innerHTML = `<span>${tier.title} 티어</span> <i class="fa-solid fa-chevron-right text-[10px]"></i>`;
-                
-                btn.addEventListener('click', () => {
-                    moveItemToTier(activeItemIdForMove, tier.id);
-                    closeQuickMoveModal();
-                });
-                quickMoveTargets.appendChild(btn);
-            });
-
-            quickMoveModal.classList.remove('hidden');
-        }
-
-        function closeQuickMoveModal() {
-            quickMoveModal.classList.add('hidden');
-            activeItemIdForMove = null;
-        }
-
-        function openTierModal(tierId) {
-            editingTierId = tierId;
-            const tier = tiers.find(t => t.id === tierId);
-            if (!tier) return;
-
-            modalTierTitle.value = tier.title;
-            modalTierColor.value = tier.color;
-            modalTierColorHex.value = tier.color.toUpperCase();
-            tierModal.classList.remove('hidden');
-        }
-
-        function closeTierModal() {
-            tierModal.classList.add('hidden');
-            editingTierId = null;
-        }
-
-        function updateUnrankedCount() {
-            const count = items.filter(i => i.tierId === 'unranked' || !i.tierId).length;
-            unrankedCount.textContent = count;
-        }
-
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toastMsg').textContent = msg;
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            toast.classList.add('translate-y-0', 'opacity-100');
-
-            setTimeout(() => {
-                toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 2500);
-        }
-
-        function getContrastColor(hexColor) {
-            if (!hexColor || hexColor[0] !== '#') return '#ffffff';
-            const hex = hexColor.replace('#', '');
-            const r = parseInt(hex.substring(0, 2), 16) || 0;
-            const g = parseInt(hex.substring(2, 4), 16) || 0;
-            const b = parseInt(hex.substring(4, 6), 16) || 0;
-            const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-            return (yiq >= 140) ? '#1e293b' : '#ffffff';
-        }
-
-        function exportToJson() {
-            try {
-                const dataStr = JSON.stringify({ tiers, items }, null, 2);
-                const blob = new Blob([dataStr], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const downloadAnchor = document.createElement('a');
-                downloadAnchor.setAttribute("href", url);
-                downloadAnchor.setAttribute("download", `tierlist_backup_${new Date().toISOString().slice(0,10)}.json`);
-                document.body.appendChild(downloadAnchor);
-                downloadAnchor.click();
-                downloadAnchor.remove();
-                URL.revokeObjectURL(url);
-                showToast('백업 파일 다운로드를 시도했습니다.');
-            } catch (err) {
-                // Fallback for restricted mobile browsers
-                jsonBackupTextarea.value = JSON.stringify({ tiers, items });
-                jsonBackupModal.classList.remove('hidden');
-            }
-        }
-
-        function importFromJson(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                try {
-                    const data = JSON.parse(evt.target.result);
-                    if (data.tiers && data.items) {
-                        tiers = data.tiers;
-                        items = data.items;
-                        saveState();
-                        renderTiers();
-                        renderItems();
-                        showToast('데이터를 성공적으로 불러왔습니다.');
-                    } else {
-                        showToast('올바르지 않은 티어표 백업 양식입니다.');
-                    }
-                } catch (err) {
-                    showToast('유효하지 않은 백업 파일입니다.');
-                }
-                jsonFileInput.value = '';
-            };
-            reader.readAsText(file);
-        }
-
-        function downloadImage() {
-            showToast('티어표 이미지 생성 중...');
-            html2canvas(tierboard, {
-                backgroundColor: '#12131C',
-                scale: 2,
-                useCORS: true,
-                logging: false
-            }).then(canvas => {
-                const dataUrl = canvas.toDataURL('image/png');
-                generatedImagePreview.src = dataUrl;
-                directImageDownloadLink.href = dataUrl;
-                directImageDownloadLink.download = `my_tier_list_${new Date().toISOString().slice(0,10)}.png`;
-
-                // Try automatic download
-                try {
-                    const link = document.createElement('a');
-                    link.download = `my_tier_list_${new Date().toISOString().slice(0,10)}.png`;
-                    link.href = dataUrl;
-                    document.body.appendChild(link);
-                    link.click();
-                    link.remove();
-                } catch (e) {
-                    console.log('Auto download blocked, modal shown.');
-                }
-
-                // Show modal preview so mobile users can long-press to save
-                imageSaveModal.classList.remove('hidden');
-                showToast('이미지 생성 완료! 안 될 경우 길게 눌러 저장하세요.');
-            }).catch(err => {
-                console.error(err);
-                showToast('이미지 생성 중 오류가 발생했습니다.');
-            });
-        }
-
-        function setupEventListeners() {
-            imageUpload.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) processImageFiles(Array.from(e.target.files));
-            });
-
-            addTextCardBtn.addEventListener('click', () => {
-                const text = textCardInput.value.trim();
-                if (!text) return;
-                items.push({
-                    id: 'item_' + Date.now(),
-                    type: 'text',
-                    content: text,
-                    bgColor: PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)],
-                    tierId: 'unranked'
-                });
-                textCardInput.value = '';
-                saveState();
-                renderItems();
-                showToast('텍스트 카드가 추가되었습니다.');
-            });
-
-            addTierBtn.addEventListener('click', () => {
-                tiers.push({
-                    id: 'tier_' + Date.now(),
-                    title: 'NEW',
-                    color: PRESET_COLORS[tiers.length % PRESET_COLORS.length]
-                });
-                saveState();
-                renderTiers();
-                renderItems();
-            });
-
-            resetBtn.addEventListener('click', () => {
-                if (confirm('모든 티어 및 아이템 데이터를 초기화하시겠습니까?')) {
-                    tiers = DEFAULT_TIERS;
-                    items = [];
-                    saveState();
-                    renderTiers();
-                    renderItems();
-                    showToast('초기화되었습니다.');
-                }
-            });
-
-            clearUnrankedBtn.addEventListener('click', () => {
-                if (confirm('보관함의 아이템을 모두 삭제하시겠습니까?')) {
-                    items = items.filter(i => i.tierId !== 'unranked' && i.tierId);
-                    saveState();
-                    renderItems();
-                }
-            });
-
-            exportJsonBtn.addEventListener('click', exportToJson);
-            importJsonBtn.addEventListener('click', () => jsonFileInput.click());
-            jsonFileInput.addEventListener('change', importFromJson);
-            downloadBtn.addEventListener('click', downloadImage);
-
-            // Modal Close Events
-            closeImageModalBtn.addEventListener('click', () => imageSaveModal.classList.add('hidden'));
-            closeImageModalBtn2.addEventListener('click', () => imageSaveModal.classList.add('hidden'));
-
-            closeJsonModalBtn.addEventListener('click', () => jsonBackupModal.classList.add('hidden'));
-            closeJsonModalBtn2.addEventListener('click', () => jsonBackupModal.classList.add('hidden'));
-            copyJsonTextBtn.addEventListener('click', () => {
-                jsonBackupTextarea.select();
-                document.execCommand('copy');
-                showToast('클립보드에 복사되었습니다.');
-            });
-
-            closeQuickMoveBtn.addEventListener('click', closeQuickMoveModal);
-            closeQuickMoveBtn2.addEventListener('click', closeQuickMoveModal);
-            deleteActiveItemBtn.addEventListener('click', () => {
-                if (activeItemIdForMove) {
-                    items = items.filter(i => i.id !== activeItemIdForMove);
-                    saveState();
-                    renderItems();
-                    closeQuickMoveModal();
-                    showToast('아이템이 삭제되었습니다.');
-                }
-            });
-
-            closeModalBtn.addEventListener('click', closeTierModal);
-            saveModalBtn.addEventListener('click', () => {
-                if (!editingTierId) return;
-                const tier = tiers.find(t => t.id === editingTierId);
-                if (tier) {
-                    tier.title = modalTierTitle.value.trim() || 'TIER';
-                    tier.color = modalTierColor.value;
-                    saveState();
-                    renderTiers();
-                    renderItems();
-                    closeTierModal();
-                }
-            });
-
-            modalTierColor.addEventListener('input', (e) => {
-                modalTierColorHex.value = e.target.value.toUpperCase();
-            });
-        }
-
-        window.onload = init;
-    </script>
+  </div>
+
+  <script>
+    let selectedItem = null;
+
+    document.getElementById('file-input').addEventListener('change', function(e) {
+      const files = Array.from(e.target.files);
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          const card = document.createElement('div');
+          card.className = 'item-card';
+          const img = document.createElement('img');
+          img.src = evt.target.result;
+          card.appendChild(img);
+
+          card.addEventListener('click', function() {
+            selectedItem = card;
+            document.getElementById('move-modal').classList.add('active');
+          });
+
+          document.getElementById('unranked-pool').appendChild(card);
+        };
+        reader.readAsDataURL(file);
+      });
+      this.value = '';
+    });
+
+    function moveTo(tier) {
+      if (!selectedItem) return;
+      if (tier === 'unranked') {
+        document.getElementById('unranked-pool').appendChild(selectedItem);
+      } else {
+        document.getElementById('tier-' + tier).appendChild(selectedItem);
+      }
+      closeModal('move-modal');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+      selectedItem = null;
+    }
+
+    function saveAsImage() {
+      const board = document.getElementById('tier-board');
+      html2canvas(board, { backgroundColor: '#000000' }).then(canvas => {
+        const dataUrl = canvas.toDataURL('image/png');
+        document.getElementById('result-img').src = dataUrl;
+        document.getElementById('img-modal').classList.add('active');
+      });
+    }
+  </script>
 </body>
 </html>
