@@ -2,23 +2,28 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
   <title>티어표 생성기 Pro</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     :root {
       --bg: #121316;
       --panel: #1e2025;
       --border: #2e323b;
       --text: #f0f2f5;
+      --muted: #9ca3af;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    * {
+      box-sizing: border-box; margin: 0; padding: 0;
+      user-select: none; -webkit-user-select: none;
+      -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
-      padding: 12px;
+      padding: calc(12px + env(safe-area-inset-top)) 12px calc(120px + env(safe-area-inset-bottom));
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -26,31 +31,44 @@
     }
 
     .container { width: 100%; max-width: 900px; }
-    h1 { text-align: center; font-size: 1.4rem; margin-bottom: 12px; font-weight: 800; }
+    h1 { text-align: center; font-size: 1.4rem; margin-bottom: 4px; font-weight: 800; }
+    .hint { text-align: center; font-size: 0.78rem; color: var(--muted); margin-bottom: 14px; }
 
     /* Controls */
     .toolbar {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 8px;
-      justify-content: center;
       margin-bottom: 16px;
-      flex-wrap: wrap;
     }
     .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 44px;
       background: #2b2e36;
       color: #fff;
       border: 1px solid var(--border);
-      padding: 9px 14px;
-      border-radius: 8px;
+      padding: 9px 12px;
+      border-radius: 10px;
       font-weight: 700;
       font-size: 0.85rem;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: transform 0.1s, filter 0.2s;
+      text-align: center;
     }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn:active { transform: scale(0.97); filter: brightness(1.15); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
     .btn-primary { background: #3b82f6; border-color: #60a5fa; }
     .btn-success { background: #10b981; border-color: #34d399; }
-    .btn-danger { background: #ef4444; border-color: #f87171; }
+    .btn-accent {
+      background: linear-gradient(135deg, #8b5cf6, #ec4899);
+      border-color: #c4b5fd;
+      box-shadow: 0 4px 14px rgba(139, 92, 246, 0.45);
+    }
+    .btn-danger { background: transparent; color: #f87171; border-color: #7f1d1d; }
+    .btn-wide { grid-column: 1 / -1; min-height: 38px; }
     #file-input, #backup-input { display: none; }
 
     /* Tier Table */
@@ -87,37 +105,44 @@
       background: #141518;
       min-height: 80px;
       align-content: flex-start;
+      transition: background 0.15s;
+    }
+    .tier-items.drop-hover {
+      background: #1a2436;
+      outline: 2px dashed #60a5fa;
+      outline-offset: -3px;
     }
 
-    /*
-      카드: <img>의 object-fit은 html2canvas가 지원하지 않아 캡처 시 찌그러짐.
-      → background-image + background-size: contain 으로 변경 (html2canvas 지원)
-    */
+    /* 카드 (1:1 정사각형, 비율 유지) */
     .item-card {
-      width: 68px !important;
-      height: 68px !important;
-      min-width: 68px !important;
-      min-height: 68px !important;
+      width: 68px;
+      height: 68px;
+      flex: 0 0 68px;
       border-radius: 6px;
-      background-color: #000;
-      background-repeat: no-repeat;
-      background-position: center center;
-      background-size: contain;
+      background: #000;
       position: relative;
       border: 1px solid rgba(255,255,255,0.15);
       touch-action: none;
-      flex-shrink: 0;
       overflow: hidden;
+      cursor: grab;
     }
-
-    /* 드래그 효과 */
-    .item-card.dragging {
-      opacity: 0.85;
+    .item-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      pointer-events: none;
+      -webkit-user-drag: none;
+    }
+    .item-card.drag-origin { opacity: 0.3; }
+    .item-card.ghost {
       position: fixed;
       z-index: 10000;
       pointer-events: none;
-      transform: scale(1.1);
+      transform: translate(-50%, -50%) scale(1.12);
       box-shadow: 0 10px 20px rgba(0,0,0,0.8);
+      opacity: 0.95;
+      cursor: grabbing;
     }
 
     /* Unranked Pool */
@@ -128,7 +153,14 @@
       border-radius: 10px;
       border: 1px solid var(--border);
     }
-    #unranked-section h3 { font-size: 0.9rem; margin-bottom: 8px; color: #9ca3af; }
+    #unranked-section h3 {
+      font-size: 0.9rem; margin-bottom: 8px; color: var(--muted);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .count {
+      background: #2b2e36; color: #d1d5db; border-radius: 999px;
+      padding: 1px 8px; font-size: 0.75rem;
+    }
     #unranked-pool {
       min-height: 90px;
       display: flex;
@@ -139,6 +171,15 @@
       border-radius: 8px;
       border: 2px dashed #2e323b;
     }
+    #unranked-pool.drop-hover { border-color: #60a5fa; }
+    #unranked-pool:empty::before {
+      content: "이미지를 업로드하면 여기에 쌓여요";
+      width: 100%;
+      align-self: center;
+      text-align: center;
+      font-size: 0.8rem;
+      color: #4b5563;
+    }
 
     /* Modal */
     .modal-overlay {
@@ -146,6 +187,7 @@
       top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.85);
       backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       display: none;
       justify-content: center;
       align-items: center;
@@ -161,35 +203,73 @@
       max-width: 320px;
       text-align: center;
       border: 1px solid #3f4452;
+      max-height: 92vh;
+      overflow-y: auto;
     }
     .modal-box h3 { margin-bottom: 12px; font-size: 1.1rem; }
+    .modal-thumb {
+      width: 96px; height: 96px; object-fit: contain;
+      background: #000; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.15);
+      margin: 0 auto 12px; display: block;
+    }
     .tier-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
     .t-btn {
       padding: 12px 0;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       font-weight: 900;
       font-size: 1.1rem;
       color: #000;
       cursor: pointer;
     }
+    .t-btn:active { transform: scale(0.95); }
+    .modal-box .btn { width: 100%; margin-top: 6px; }
+
+    .preview-img {
+      width: 100%; max-height: 60vh; object-fit: contain;
+      border-radius: 8px; margin-bottom: 10px; background: #000;
+      -webkit-touch-callout: default; -webkit-user-select: auto; user-select: auto;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      top: calc(12px + env(safe-area-inset-top));
+      left: 50%;
+      transform: translate(-50%, -20px);
+      background: #2b2e36;
+      border: 1px solid #3f4452;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+      z-index: 100000;
+      max-width: 92%;
+      text-align: center;
+    }
+    #toast.show { opacity: 1; transform: translate(-50%, 0); }
   </style>
 </head>
 <body>
 
   <div class="container">
     <h1>🏆 티어표 생성기 Pro</h1>
+    <p class="hint">이미지를 탭하면 등급 선택 · 드래그하면 이동/순서 변경</p>
 
     <div class="toolbar">
       <label class="btn btn-primary" for="file-input">📷 이미지 업로드</label>
       <input type="file" id="file-input" multiple accept="image/*">
 
+      <button id="download-btn" class="btn btn-accent" onclick="saveAsImage()">🖼️ 이미지 다운로드</button>
+
       <button class="btn btn-success" onclick="exportBackup()">💾 백업 저장</button>
       <label class="btn" for="backup-input">📂 백업 불러오기</label>
       <input type="file" id="backup-input" accept=".json">
 
-      <button id="download-btn" class="btn" onclick="saveAsImage()">🖼️ 이미지 다운로드</button>
-      <button class="btn btn-danger" onclick="clearData()">🔄 전체 초기화</button>
+      <button class="btn btn-danger btn-wide" onclick="clearData()">🔄 전체 초기화</button>
     </div>
 
     <!-- Tier Board -->
@@ -204,8 +284,8 @@
 
     <!-- Unranked Pool -->
     <div id="unranked-section">
-      <h3>📦 미분류 보관함</h3>
-      <div id="unranked-pool" class="tier-items" data-tier="unranked"></div>
+      <h3>📦 미분류 보관함 <span class="count" id="pool-count">0</span></h3>
+      <div id="unranked-pool" data-tier="unranked"></div>
     </div>
   </div>
 
@@ -213,6 +293,7 @@
   <div class="modal-overlay" id="move-modal">
     <div class="modal-box">
       <h3>배치할 등급 선택</h3>
+      <img id="move-thumb" class="modal-thumb" alt="">
       <div class="tier-grid">
         <button class="t-btn" style="background:#ff7f7f;" onclick="moveTo('S')">S</button>
         <button class="t-btn" style="background:#ffbf7f;" onclick="moveTo('A')">A</button>
@@ -221,145 +302,341 @@
         <button class="t-btn" style="background:#7fbfff;" onclick="moveTo('D')">D</button>
         <button class="t-btn" style="background:#bf7fff;" onclick="moveTo('F')">F</button>
       </div>
-      <button class="btn" style="width:100%; background:#333;" onclick="moveTo('unranked')">미분류로 이동</button>
-      <button class="btn" style="width:100%; margin-top:6px; background:#181818;" onclick="closeModal('move-modal')">취소</button>
+      <button class="btn" style="background:#333;" onclick="moveTo('unranked')">미분류로 이동</button>
+      <button class="btn btn-danger" onclick="deleteSelected()">🗑️ 이 이미지 삭제</button>
+      <button class="btn" style="background:#181818;" onclick="closeModal('move-modal')">취소</button>
     </div>
   </div>
 
+  <!-- Preview Modal (공유창이 열리지 않을 때의 대체 저장 방법) -->
+  <div class="modal-overlay" id="preview-modal">
+    <div class="modal-box">
+      <h3>이미지를 길게 눌러 저장하세요</h3>
+      <img id="preview-img" class="preview-img" alt="티어표 미리보기">
+      <button class="btn" onclick="closePreview()">닫기</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
   <script>
+    const STATE_KEY = 'state';
+    const LEGACY_KEY = 'tierlist_autosave'; // 예전 버전(localStorage) 데이터 이전용
+    const POOL_ID = 'unranked-pool';
+
     let selectedItem = null;
-    let activeCard = null;
-    let isDragging = false;
-    let startX = 0, startY = 0;
+    let drag = null;
+    let loaded = false;      // 불러오기 완료 전에 빈 상태로 덮어쓰는 것을 방지
+    let saveTimer = null;
+    let toastTimer = null;
+    let previewUrl = null;
 
-    window.addEventListener('DOMContentLoaded', () => {
-      loadAutoSave();
-    });
-
-    document.getElementById('file-input').addEventListener('change', function(e) {
-      const files = Array.from(e.target.files);
-      files.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-          createItemCard(evt.target.result, 'unranked-pool');
-          autoSave();
-        };
-        reader.readAsDataURL(file);
+    /* ---------- 저장소 (IndexedDB 우선, 용량 제한 없음에 가깝게) ---------- */
+    let dbPromise = null;
+    function openDB() {
+      if (!dbPromise) {
+        dbPromise = new Promise((resolve, reject) => {
+          if (!window.indexedDB) { reject(new Error('no idb')); return; }
+          const req = indexedDB.open('tierlist-pro', 1);
+          req.onupgradeneeded = () => req.result.createObjectStore('kv');
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+      return dbPromise;
+    }
+    async function idbGet(key) {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const req = db.transaction('kv', 'readonly').objectStore('kv').get(key);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
       });
+    }
+    async function idbSet(key, value) {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('kv', 'readwrite');
+        tx.objectStore('kv').put(value, key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error || new Error('aborted'));
+      });
+    }
+    async function idbDelete(key) {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('kv', 'readwrite');
+        tx.objectStore('kv').delete(key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+    async function storageGet(key) {
+      try { return await idbGet(key); }
+      catch (e) {
+        try { const v = localStorage.getItem('tierlist_' + key); return v ? JSON.parse(v) : undefined; }
+        catch (_) { return undefined; }
+      }
+    }
+    async function storageSet(key, value) {
+      try { await idbSet(key, value); }
+      catch (e) { localStorage.setItem('tierlist_' + key, JSON.stringify(value)); }
+    }
+    async function storageRemove(key) {
+      try { await idbDelete(key); } catch (e) {}
+      try { localStorage.removeItem('tierlist_' + key); } catch (e) {}
+    }
+
+    /* ---------- 유틸 ---------- */
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+    }
+
+    function todayStr() {
+      const d = new Date();
+      const p = n => String(n).padStart(2, '0');
+      return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    }
+
+    function containerFor(tier) {
+      if (!tier || tier === 'unranked') return document.getElementById(POOL_ID);
+      return document.getElementById('tier-' + tier) || document.getElementById(POOL_ID);
+    }
+
+    function updateCounts() {
+      document.getElementById('pool-count').textContent = document.getElementById(POOL_ID).children.length;
+    }
+
+    /* ---------- 이미지 업로드 (긴 변 1280px로 축소 → 저장 용량/속도 개선) ---------- */
+    function loadImageFromFile(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => resolve({ img, url });
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('이미지를 읽을 수 없음')); };
+        img.src = url;
+      });
+    }
+
+    async function processFile(file) {
+      const { img, url } = await loadImageFromFile(file);
+      try {
+        const MAX = 1280;
+        const s = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.max(1, Math.round(img.naturalWidth * s));
+        const h = Math.max(1, Math.round(img.naturalHeight * s));
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const x = c.getContext('2d');
+        x.fillStyle = '#000';
+        x.fillRect(0, 0, w, h);
+        x.imageSmoothingEnabled = true;
+        x.imageSmoothingQuality = 'high';
+        x.drawImage(img, 0, 0, w, h);
+        return c.toDataURL('image/jpeg', 0.92);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    document.getElementById('file-input').addEventListener('change', async function (e) {
+      const files = Array.from(e.target.files || []);
       this.value = '';
+      if (!files.length) return;
+
+      toast('이미지 처리 중... (' + files.length + '장)');
+      const pool = document.getElementById(POOL_ID);
+      let ok = 0, fail = 0;
+      for (const file of files) {
+        try {
+          const src = await processFile(file);
+          createItemCard(src, pool);
+          ok++;
+        } catch (err) {
+          console.error(err);
+          fail++;
+        }
+      }
+      autoSave();
+      toast(fail ? ok + '장 추가, ' + fail + '장 실패' : ok + '장 추가됨');
     });
 
-    function createItemCard(imgSrc, parentId) {
+    /* ---------- 카드 ---------- */
+    function createItemCard(src, parent) {
       const card = document.createElement('div');
       card.className = 'item-card';
-      card.setAttribute('data-src', imgSrc);
-      // <img> 대신 배경 이미지로 표시 (비율 유지 + 캡처 시 찌그러짐 방지)
-      card.style.backgroundImage = 'url("' + imgSrc + '")';
 
-      attachTouchAndClickEvents(card);
-      const parent = document.getElementById(parentId);
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = '';
+      img.draggable = false;
+      card.appendChild(img);
+
+      card.addEventListener('pointerdown', onPointerDown);
+      card.addEventListener('contextmenu', e => e.preventDefault());
+
       if (parent) parent.appendChild(card);
       return card;
     }
 
-    function attachTouchAndClickEvents(card) {
-      let moved = false;
+    /* ---------- 드래그 (터치/마우스 공통, 놓은 위치에 끼워넣기) ---------- */
+    function onPointerDown(e) {
+      if (drag) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      drag = {
+        card: e.currentTarget,
+        id: e.pointerId,
+        sx: e.clientX, sy: e.clientY,
+        moved: false, ghost: null, hover: null
+      };
+      window.addEventListener('pointermove', onPointerMove, { passive: false });
+      window.addEventListener('pointerup', onPointerUp);
+      window.addEventListener('pointercancel', onPointerCancel);
+    }
 
-      card.addEventListener('touchstart', function(e) {
-        moved = false;
-        activeCard = card;
-        const touch = e.touches[0];
-        startX = touch.clientX;
-        startY = touch.clientY;
-      }, { passive: false });
+    function startDrag() {
+      drag.moved = true;
+      const g = drag.card.cloneNode(true);
+      g.classList.add('ghost');
+      document.body.appendChild(g);
+      drag.ghost = g;
+      drag.card.classList.add('drag-origin');
+    }
 
-      card.addEventListener('touchmove', function(e) {
-        if (!activeCard) return;
-        const touch = e.touches[0];
-        const deltaX = Math.abs(touch.clientX - startX);
-        const deltaY = Math.abs(touch.clientY - startY);
+    function onPointerMove(e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      if (!drag.moved) {
+        if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return;
+        startDrag();
+      }
+      e.preventDefault();
+      drag.ghost.style.left = e.clientX + 'px';
+      drag.ghost.style.top = e.clientY + 'px';
+      const loc = locate(e.clientX, e.clientY);
+      setHover(loc ? loc.container : null);
+    }
 
-        if (deltaX > 5 || deltaY > 5) {
-          moved = true;
-          isDragging = true;
-          e.preventDefault();
+    function locate(x, y) {
+      const el = document.elementFromPoint(x, y);
+      if (!el) return null;
 
-          card.classList.add('dragging');
-          card.style.left = (touch.clientX - 34) + 'px';
-          card.style.top = (touch.clientY - 34) + 'px';
+      let container = el.closest('.tier-items');
+      if (!container) {
+        const row = el.closest('.tier-row');
+        if (row) container = row.querySelector('.tier-items');
+      }
+      if (!container && el.closest('#unranked-section')) {
+        container = document.getElementById(POOL_ID);
+      }
+      if (!container) return null;
+
+      let ref = null;       // 이 노드 앞에 삽입 (null이면 맨 뒤)
+      let self = false;
+      const target = el.closest('.item-card');
+      if (target === drag.card) {
+        self = true;
+      } else if (target && target.parentElement === container) {
+        const r = target.getBoundingClientRect();
+        ref = x < r.left + r.width / 2 ? target : target.nextElementSibling;
+      }
+      return { container, ref, self };
+    }
+
+    function setHover(container) {
+      if (drag.hover === container) return;
+      if (drag.hover) drag.hover.classList.remove('drop-hover');
+      if (container) container.classList.add('drop-hover');
+      drag.hover = container;
+    }
+
+    function onPointerUp(e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      const d = drag;
+      if (d.moved) {
+        const loc = locate(e.clientX, e.clientY);
+        cleanupDrag();
+        if (loc && !loc.self) {
+          loc.container.insertBefore(d.card, loc.ref || null);
+          autoSave();
         }
-      }, { passive: false });
+      } else {
+        cleanupDrag();
+        openMoveModal(d.card);
+      }
+    }
 
-      card.addEventListener('touchend', function(e) {
-        if (!activeCard) return;
+    function onPointerCancel() {
+      if (drag) cleanupDrag();
+    }
 
-        if (isDragging) {
-          card.classList.remove('dragging');
-          card.style.left = '';
-          card.style.top = '';
+    function cleanupDrag() {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerCancel);
+      if (drag.ghost) drag.ghost.remove();
+      drag.card.classList.remove('drag-origin');
+      if (drag.hover) drag.hover.classList.remove('drop-hover');
+      drag = null;
+    }
 
-          const touch = e.changedTouches[0];
-          const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-
-          if (dropTarget) {
-            const container = dropTarget.closest('.tier-items');
-            if (container) {
-              container.appendChild(card);
-              autoSave();
-            }
-          }
-          isDragging = false;
-        } else if (!moved) {
-          selectedItem = card;
-          document.getElementById('move-modal').classList.add('active');
-        }
-        activeCard = null;
-      });
+    /* ---------- 등급 선택 모달 ---------- */
+    function openMoveModal(card) {
+      selectedItem = card;
+      const img = card.querySelector('img');
+      document.getElementById('move-thumb').src = img ? img.src : '';
+      document.getElementById('move-modal').classList.add('active');
     }
 
     function moveTo(tier) {
       if (!selectedItem) return;
-      if (tier === 'unranked') {
-        document.getElementById('unranked-pool').appendChild(selectedItem);
-      } else {
-        document.getElementById('tier-' + tier).appendChild(selectedItem);
-      }
+      containerFor(tier).appendChild(selectedItem);
+      autoSave();
+      closeModal('move-modal');
+    }
+
+    function deleteSelected() {
+      if (!selectedItem) return;
+      if (!confirm('이 이미지를 삭제할까요?')) return;
+      selectedItem.remove();
       autoSave();
       closeModal('move-modal');
     }
 
     function closeModal(id) {
       document.getElementById(id).classList.remove('active');
-      selectedItem = null;
-    }
-
-    /* 💾 자동 저장 */
-    function autoSave() {
-      try {
-        const data = collectData();
-        localStorage.setItem('tierlist_autosave', JSON.stringify(data));
-      } catch (e) {
-        console.warn('자동 저장 실패(용량 초과 가능):', e);
+      if (id === 'move-modal') {
+        selectedItem = null;
+        document.getElementById('move-thumb').removeAttribute('src');
       }
     }
 
-    function loadAutoSave() {
-      const saved = localStorage.getItem('tierlist_autosave');
-      document.querySelectorAll('.tier-items').forEach(el => el.innerHTML = '');
-      if (saved) {
-        try {
-          restoreData(JSON.parse(saved));
-        } catch(e) {}
-      }
+    function closePreview() {
+      document.getElementById('preview-modal').classList.remove('active');
+      document.getElementById('preview-img').removeAttribute('src');
+      if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
     }
 
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+      modal.addEventListener('click', e => {
+        if (e.target !== modal) return;
+        if (modal.id === 'preview-modal') closePreview();
+        else closeModal(modal.id);
+      });
+    });
+
+    /* ---------- 자동 저장 / 불러오기 ---------- */
     function collectData() {
       const items = [];
-      document.querySelectorAll('.item-card').forEach(card => {
+      document.querySelectorAll('.item-card:not(.ghost)').forEach(card => {
+        const img = card.querySelector('img');
         const parent = card.parentElement;
-        const tier = parent ? (parent.getAttribute('data-tier') || 'unranked') : 'unranked';
-        const imgSrc = card.getAttribute('data-src');
-        if (imgSrc) items.push({ tier, imgSrc });
+        if (!img || !img.src || !parent) return;
+        items.push({ tier: parent.getAttribute('data-tier') || 'unranked', imgSrc: img.src });
       });
       return items;
     }
@@ -368,122 +645,281 @@
       if (!Array.isArray(data)) return;
       document.querySelectorAll('.tier-items').forEach(el => el.innerHTML = '');
       data.forEach(item => {
-        const targetId = item.tier === 'unranked' ? 'unranked-pool' : 'tier-' + item.tier;
-        createItemCard(item.imgSrc, targetId);
+        if (!item || typeof item.imgSrc !== 'string') return;
+        createItemCard(item.imgSrc, containerFor(item.tier));
       });
+      updateCounts();
     }
 
+    function autoSave() {
+      updateCounts();
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(doSave, 120);
+    }
+
+    async function doSave() {
+      clearTimeout(saveTimer);
+      if (!loaded) return false;
+      try {
+        await storageSet(STATE_KEY, collectData());
+        return true;
+      } catch (e) {
+        console.error(e);
+        toast('⚠️ 자동 저장에 실패했어요. 백업 저장을 이용해 주세요.');
+        return false;
+      }
+    }
+
+    async function loadAutoSave() {
+      let data = await storageGet(STATE_KEY);
+      let fromLegacy = false;
+
+      if (!Array.isArray(data)) {
+        try {
+          const legacy = localStorage.getItem(LEGACY_KEY);
+          if (legacy) {
+            const parsed = JSON.parse(legacy);
+            if (Array.isArray(parsed)) { data = parsed; fromLegacy = true; }
+          }
+        } catch (e) {}
+      }
+
+      if (Array.isArray(data)) restoreData(data);
+      updateCounts();
+      loaded = true;
+
+      if (fromLegacy) {
+        const ok = await doSave();
+        if (ok) { try { localStorage.removeItem(LEGACY_KEY); } catch (e) {} }
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', loadAutoSave);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') doSave();
+    });
+    window.addEventListener('pagehide', () => { doSave(); });
+
+    /* ---------- 백업 ---------- */
     function exportBackup() {
       const data = collectData();
-      if (data.length === 0) {
-        alert('백업할 아이템이 없습니다.');
-        return;
-      }
-      const jsonStr = JSON.stringify(data);
-      const blob = new Blob([jsonStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `tierlist-backup-${new Date().toISOString().slice(0,10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      if (data.length === 0) { toast('백업할 아이템이 없습니다.'); return; }
+      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      downloadBlob(blob, 'tierlist-backup-' + todayStr() + '.json');
     }
 
-    document.getElementById('backup-input').addEventListener('change', function(e) {
+    document.getElementById('backup-input').addEventListener('change', function (e) {
       const file = e.target.files[0];
+      this.value = '';
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = function(evt) {
-        let parsedData = null;
-        try {
-          parsedData = JSON.parse(evt.target.result);
-        } catch(err) {
-          alert('올바른 백업 파일(.json)이 아닙니다.');
-          return;
-        }
+      reader.onload = function (evt) {
+        let parsed = null;
+        try { parsed = JSON.parse(evt.target.result); }
+        catch (err) { toast('올바른 백업 파일(.json)이 아닙니다.'); return; }
 
-        if (!Array.isArray(parsedData)) {
-          alert('지원하지 않는 백업 데이터 형식입니다.');
-          return;
-        }
+        if (!Array.isArray(parsed)) { toast('지원하지 않는 백업 형식입니다.'); return; }
 
-        try {
-          restoreData(parsedData);
-          autoSave();
-        } catch(err) {
-          console.error(err);
-        }
+        if (collectData().length > 0 && !confirm('현재 내용이 백업 내용으로 대체됩니다. 계속할까요?')) return;
+
+        restoreData(parsed);
+        autoSave();
+        toast('백업을 불러왔어요 (' + parsed.length + '장)');
       };
       reader.readAsText(file);
-      this.value = '';
     });
 
-    function clearData() {
-      if (confirm('모든 내용과 저장된 데이터를 초기화하시겠습니까?')) {
-        localStorage.removeItem('tierlist_autosave');
-        document.querySelectorAll('.tier-items').forEach(el => el.innerHTML = '');
-      }
+    async function clearData() {
+      if (!confirm('모든 내용과 저장된 데이터를 초기화하시겠습니까?')) return;
+      document.querySelectorAll('.tier-items').forEach(el => el.innerHTML = '');
+      clearTimeout(saveTimer);
+      await storageRemove(STATE_KEY);
+      try { localStorage.removeItem(LEGACY_KEY); } catch (e) {}
+      updateCounts();
+      toast('초기화되었습니다.');
     }
 
-    /* 🖼️ 고화질 이미지 저장 (비율 유지) */
-    function saveAsImage() {
-      const board = document.getElementById('tier-board');
-      const btn = document.getElementById('download-btn');
-      const originalText = btn.innerHTML;
+    function downloadBlob(blob, fileName) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    }
 
+    /* ---------- 🖼️ 고화질 이미지 저장 ----------
+       html2canvas를 쓰지 않고 캔버스에 직접 그립니다.
+       → 이미지 비율이 유지되고, 원본 해상도로 선명하게 출력됩니다. */
+    function roundRect(ctx, x, y, w, h, r) {
+      r = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    // 큰 원본을 한 번에 줄이면 모바일 Safari에서 계단/깨짐이 생기므로 절반씩 단계적으로 축소
+    function prescale(img, targetW, targetH) {
+      let cw = img.naturalWidth, ch = img.naturalHeight;
+      let src = img;
+      while (cw / 2 >= targetW && ch / 2 >= targetH) {
+        const nw = Math.floor(cw / 2), nh = Math.floor(ch / 2);
+        const c = document.createElement('canvas');
+        c.width = nw; c.height = nh;
+        const x = c.getContext('2d');
+        x.imageSmoothingEnabled = true;
+        x.imageSmoothingQuality = 'high';
+        x.drawImage(src, 0, 0, nw, nh);
+        src = c; cw = nw; ch = nh;
+      }
+      return src;
+    }
+
+    function drawCard(ctx, card, br, pxScale) {
+      const img = card.querySelector('img');
+      const r = card.getBoundingClientRect();
+      const x = r.left - br.left, y = r.top - br.top, w = r.width, h = r.height;
+
+      ctx.save();
+      roundRect(ctx, x, y, w, h, 6);
+      ctx.fillStyle = '#000';
+      ctx.fill();
+      ctx.clip();
+      if (img && img.naturalWidth) {
+        const ix = x + 1, iy = y + 1, iw = w - 2, ih = h - 2;
+        const s = Math.min(iw / img.naturalWidth, ih / img.naturalHeight);
+        const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+        const src = prescale(img, dw * pxScale, dh * pxScale);
+        ctx.drawImage(src, ix + (iw - dw) / 2, iy + (ih - dh) / 2, dw, dh);
+      }
+      ctx.restore();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = 1;
+      roundRect(ctx, x + 0.5, y + 0.5, w - 1, h - 1, 5.5);
+      ctx.stroke();
+    }
+
+    async function renderBoardCanvas() {
+      const board = document.getElementById('tier-board');
+
+      await Promise.all(Array.from(board.querySelectorAll('img')).map(i =>
+        i.decode ? i.decode().catch(() => {}) : Promise.resolve()
+      ));
+
+      const br = board.getBoundingClientRect();
+      const W = br.width, H = br.height;
+
+      let scale = Math.min(4, Math.max(3, window.devicePixelRatio || 1));
+      const MAX_AREA = 16000000; // iOS 캔버스 면적 제한 대비
+      scale = Math.min(scale, Math.sqrt(MAX_AREA / (W * H)));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(W * scale);
+      canvas.height = Math.round(H * scale);
+      const pxScale = canvas.width / W;
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(pxScale, canvas.height / H);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      const rel = el => {
+        const r = el.getBoundingClientRect();
+        return { x: r.left - br.left, y: r.top - br.top, w: r.width, h: r.height };
+      };
+
+      ctx.save();
+      roundRect(ctx, 0, 0, W, H, 10);
+      ctx.clip();
+      ctx.fillStyle = '#0d0e10';
+      ctx.fillRect(0, 0, W, H);
+
+      for (const row of board.querySelectorAll('.tier-row')) {
+        const rr = rel(row);
+        ctx.fillStyle = '#181a1f';
+        ctx.fillRect(rr.x, rr.y, rr.w, rr.h);
+
+        const label = row.querySelector('.tier-label');
+        const lr = rel(label);
+        const lcs = getComputedStyle(label);
+        ctx.fillStyle = lcs.backgroundColor;
+        ctx.fillRect(lr.x, lr.y, lr.w, lr.h);
+        ctx.fillStyle = '#000';
+        ctx.font = '900 ' + lcs.fontSize + ' ' + lcs.fontFamily;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label.textContent.trim(), lr.x + lr.w / 2, lr.y + lr.h / 2 + 1);
+
+        const items = row.querySelector('.tier-items');
+        const ir = rel(items);
+        ctx.fillStyle = '#141518';
+        ctx.fillRect(ir.x, ir.y, ir.w, ir.h);
+
+        items.querySelectorAll('.item-card').forEach(card => drawCard(ctx, card, br, pxScale));
+      }
+      ctx.restore();
+
+      ctx.strokeStyle = '#2e323b';
+      ctx.lineWidth = 1;
+      roundRect(ctx, 0.5, 0.5, W - 1, H - 1, 9.5);
+      ctx.stroke();
+
+      return canvas;
+    }
+
+    function showPreview(blob) {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = URL.createObjectURL(blob);
+      document.getElementById('preview-img').src = previewUrl;
+      document.getElementById('preview-modal').classList.add('active');
+    }
+
+    async function saveAsImage() {
+      const btn = document.getElementById('download-btn');
+      if (btn.disabled) return;
+
+      if (!document.querySelector('#tier-board .item-card')) {
+        toast('티어에 배치된 이미지가 없어요.');
+        return;
+      }
+
+      const originalText = btn.innerHTML;
       btn.innerHTML = '⏳ 처리 중...';
       btn.disabled = true;
 
-      // 고화질: 최소 3배, 최대 4배 (iOS 캔버스 크기 제한 고려)
-      const scale = Math.min(4, Math.max(3, window.devicePixelRatio || 1));
+      try {
+        const canvas = await renderBoardCanvas();
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+        if (!blob) throw new Error('이미지 생성 실패');
 
-      html2canvas(board, {
-        backgroundColor: '#0d0e10',
-        scale: scale,
-        useCORS: true,
-        logging: false,
-        allowTaint: true
-      }).then(canvas => {
-        canvas.toBlob(function(blob) {
-          if (!blob) {
-            alert('이미지 생성에 실패했습니다.');
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-            return;
+        const fileName = 'tierlist-' + todayStr() + '.png';
+        const file = new File([blob], fileName, { type: 'image/png' });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], title: '완성된 티어표' });
+          } catch (err) {
+            // 사용자가 직접 닫은 경우(AbortError)는 무시, 그 외엔 길게 눌러 저장하는 화면 제공
+            if (!err || err.name !== 'AbortError') showPreview(blob);
           }
-
-          const fileName = `tierlist-${new Date().toISOString().slice(0,10)}.png`;
-          const file = new File([blob], fileName, { type: 'image/png' });
-
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            navigator.share({
-              files: [file],
-              title: '완성된 티어표'
-            }).catch(() => {}).finally(() => {
-              btn.innerHTML = originalText;
-              btn.disabled = false;
-            });
-          } else {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-          }
-        }, 'image/png', 1.0);
-      }).catch(err => {
+        } else {
+          downloadBlob(blob, fileName);
+        }
+      } catch (err) {
         console.error(err);
-        alert('이미지 저장 중 오류가 발생했습니다.');
+        toast('이미지 저장 중 오류가 발생했어요.');
+      } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
-      });
+      }
     }
   </script>
 </body>
