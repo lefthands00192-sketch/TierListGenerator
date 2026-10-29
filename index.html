@@ -18,7 +18,7 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
-      padding: 16px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -26,14 +26,14 @@
     }
 
     .container { width: 100%; max-width: 900px; }
-    h1 { text-align: center; font-size: 1.5rem; margin-bottom: 16px; font-weight: 800; letter-spacing: -0.5px; }
+    h1 { text-align: center; font-size: 1.4rem; margin-bottom: 12px; font-weight: 800; }
 
     /* Controls */
     .toolbar {
       display: flex;
       gap: 10px;
       justify-content: center;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       flex-wrap: wrap;
     }
     .btn {
@@ -45,10 +45,7 @@
       font-weight: 700;
       font-size: 0.9rem;
       cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
-    .btn:active { transform: scale(0.97); }
     .btn-primary { background: #3b82f6; border-color: #60a5fa; }
     #file-input { display: none; }
 
@@ -64,18 +61,17 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     }
 
-    .tier-row { display: flex; min-height: 85px; background: #181a1f; }
+    .tier-row { display: flex; min-height: 80px; background: #181a1f; }
     .tier-label {
-      width: 80px;
-      min-width: 80px;
+      width: 75px;
+      min-width: 75px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 900;
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       color: #000;
       text-align: center;
-      text-shadow: 0 1px 2px rgba(255,255,255,0.3);
     }
 
     .tier-items {
@@ -83,60 +79,62 @@
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
-      padding: 8px;
+      padding: 6px;
       background: #141518;
-      min-height: 85px;
+      min-height: 80px;
       align-content: flex-start;
-      transition: background 0.2s;
     }
 
-    .tier-items.drag-over {
-      background: #252a36;
-    }
-
-    /* Item Card */
+    /* Item Card (원형/정사각형 비율 완전 고정) */
     .item-card {
-      width: 70px;
-      height: 70px;
-      min-width: 70px;
-      min-height: 70px;
+      width: 68px;
+      height: 68px;
+      min-width: 68px;
+      min-height: 68px;
+      max-width: 68px;
+      max-height: 68px;
       border-radius: 6px;
       overflow: hidden;
       background: #000;
       position: relative;
-      cursor: grab;
-      border: 1px solid rgba(255,255,255,0.1);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      border: 1px solid rgba(255,255,255,0.15);
+      touch-action: none;
+      display: block;
+      flex-shrink: 0;
     }
 
-    .item-card:active { cursor: grabbing; }
-
     .item-card img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      pointer-events: none;
+      width: 68px;
+      height: 68px;
       display: block;
+      pointer-events: none;
+    }
+
+    /* 드래그 중 이동 효과 */
+    .item-card.dragging {
+      opacity: 0.8;
+      position: fixed;
+      z-index: 10000;
+      pointer-events: none;
+      transform: scale(1.1);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.8);
     }
 
     /* Unranked Pool */
     #unranked-section {
-      margin-top: 20px;
+      margin-top: 16px;
       background: var(--panel);
-      padding: 14px;
+      padding: 12px;
       border-radius: 10px;
       border: 1px solid var(--border);
     }
-    #unranked-section h3 { font-size: 0.95rem; margin-bottom: 10px; color: #9ca3af; font-weight: 600; }
+    #unranked-section h3 { font-size: 0.9rem; margin-bottom: 8px; color: #9ca3af; }
     #unranked-pool {
-      min-height: 95px;
+      min-height: 90px;
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
-      padding: 8px;
+      padding: 6px;
       background: #121316;
       border-radius: 8px;
       border: 2px dashed #2e323b;
@@ -151,21 +149,20 @@
       display: none;
       justify-content: center;
       align-items: center;
-      z-index: 9999;
+      z-index: 99999;
     }
     .modal-overlay.active { display: flex; }
 
     .modal-box {
       background: #23262d;
-      padding: 20px;
+      padding: 18px;
       border-radius: 14px;
-      width: 85%;
+      width: 90%;
       max-width: 320px;
       text-align: center;
       border: 1px solid #3f4452;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     }
-    .modal-box h3 { margin-bottom: 14px; font-size: 1.1rem; }
+    .modal-box h3 { margin-bottom: 12px; font-size: 1.1rem; }
     .tier-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
     .t-btn {
       padding: 12px 0;
@@ -177,7 +174,21 @@
       cursor: pointer;
     }
 
-    .preview-img { width: 100%; max-height: 60vh; object-fit: contain; margin: 12px 0; border-radius: 6px; border: 1px solid #444; }
+    .preview-img-container {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 10px 0;
+    }
+
+    .preview-img {
+      max-width: 100%;
+      max-height: 60vh;
+      display: block;
+      border-radius: 6px;
+      border: 1px solid #444;
+    }
   </style>
 </head>
 <body>
@@ -203,7 +214,7 @@
 
     <!-- Unranked Pool -->
     <div id="unranked-section">
-      <h3>📦 미분류 보관함 (드래그 또는 터치하여 이동)</h3>
+      <h3>📦 미분류 보관함 (즉시 드래그 또는 터치하여 이동)</h3>
       <div id="unranked-pool" class="tier-items"></div>
     </div>
   </div>
@@ -230,75 +241,117 @@
     <div class="modal-box">
       <h3>완성된 티어표</h3>
       <p style="font-size:0.8rem; color:#aaa;">이미지를 길게 누르면 사진 앱/앨범에 저장됩니다.</p>
-      <img id="result-img" class="preview-img">
+      <div class="preview-img-container">
+        <img id="result-img" class="preview-img">
+      </div>
       <button class="btn" style="width:100%;" onclick="closeModal('img-modal')">닫기</button>
     </div>
   </div>
 
   <script>
     let selectedItem = null;
-    let draggedElement = null;
+    let activeCard = null;
+    let isDragging = false;
+    let startX = 0, startY = 0;
 
-    // File Upload Handler
+    // File Upload Handler (이미지 왜곡 완전 방지 보정)
     document.getElementById('file-input').addEventListener('change', function(e) {
       const files = Array.from(e.target.files);
       files.forEach(file => {
         const reader = new FileReader();
         reader.onload = function(evt) {
-          const card = document.createElement('div');
-          card.className = 'item-card';
-          card.draggable = true;
+          const imgObj = new Image();
+          imgObj.src = evt.target.result;
+          imgObj.onload = function() {
+            // 정사각형 68x68 캔버스에 원본 비율 손실 없이 그리기
+            const canvas = document.createElement('canvas');
+            canvas.width = 68;
+            canvas.height = 68;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, 68, 68);
 
-          const img = document.createElement('img');
-          img.src = evt.target.result;
-          card.appendChild(img);
+            const scale = Math.min(68 / imgObj.width, 68 / imgObj.height);
+            const w = imgObj.width * scale;
+            const h = imgObj.height * scale;
+            const x = (68 - w) / 2;
+            const y = (68 - h) / 2;
 
-          // 1. 클릭/터치 시 팝업 열기
-          card.addEventListener('click', function(e) {
-            e.stopPropagation();
-            selectedItem = card;
-            document.getElementById('move-modal').classList.add('active');
-          });
+            ctx.drawImage(imgObj, x, y, w, h);
 
-          // 2. 드래그 앤 드랍 이벤트
-          card.addEventListener('dragstart', function(e) {
-            draggedElement = card;
-            e.dataTransfer.setData('text/plain', '');
-            setTimeout(() => card.style.opacity = '0.4', 0);
-          });
+            const fixedDataUrl = canvas.toDataURL('image/png');
 
-          card.addEventListener('dragend', function() {
-            card.style.opacity = '1';
-            draggedElement = null;
-          });
+            const card = document.createElement('div');
+            card.className = 'item-card';
 
-          document.getElementById('unranked-pool').appendChild(card);
+            const img = document.createElement('img');
+            img.src = fixedDataUrl;
+            card.appendChild(img);
+
+            attachTouchAndClickEvents(card);
+            document.getElementById('unranked-pool').appendChild(card);
+          };
         };
         reader.readAsDataURL(file);
       });
       this.value = '';
     });
 
-    // Drop Zone Setup
-    const dropZones = document.querySelectorAll('.tier-items');
-    dropZones.forEach(zone => {
-      zone.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        zone.classList.add('drag-over');
-      });
+    // 0초 반응 초고속 터치/드래그 이벤터
+    function attachTouchAndClickEvents(card) {
+      let moved = false;
 
-      zone.addEventListener('dragleave', function() {
-        zone.classList.remove('drag-over');
-      });
+      card.addEventListener('touchstart', function(e) {
+        moved = false;
+        activeCard = card;
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+      }, { passive: false });
 
-      zone.addEventListener('drop', function(e) {
-        e.preventDefault();
-        zone.classList.remove('drag-over');
-        if (draggedElement) {
-          zone.appendChild(draggedElement);
+      card.addEventListener('touchmove', function(e) {
+        if (!activeCard) return;
+        const touch = e.touches[0];
+        const deltaX = Math.abs(touch.clientX - startX);
+        const deltaY = Math.abs(touch.clientY - startY);
+
+        if (deltaX > 5 || deltaY > 5) {
+          moved = true;
+          isDragging = true;
+          e.preventDefault(); // 스크롤 방지
+
+          card.classList.add('dragging');
+          card.style.left = (touch.clientX - 34) + 'px';
+          card.style.top = (touch.clientY - 34) + 'px';
         }
+      }, { passive: false });
+
+      card.addEventListener('touchend', function(e) {
+        if (!activeCard) return;
+
+        if (isDragging) {
+          card.classList.remove('dragging');
+          card.style.left = '';
+          card.style.top = '';
+
+          const touch = e.changedTouches[0];
+          const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+
+          if (dropTarget) {
+            const container = dropTarget.closest('.tier-items');
+            if (container) {
+              container.appendChild(card);
+            }
+          }
+          isDragging = false;
+        } else if (!moved) {
+          // 클릭 시 이동 모달 열기
+          selectedItem = card;
+          document.getElementById('move-modal').classList.add('active');
+        }
+        activeCard = null;
       });
-    });
+    }
 
     function moveTo(tier) {
       if (!selectedItem) return;
