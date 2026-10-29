@@ -87,30 +87,28 @@
       align-content: flex-start;
     }
 
-    /* Item Card (고화질 정비율 보정) */
+    /* Item Card (완벽 1:1 고정) */
     .item-card {
-      width: 68px;
-      height: 68px;
-      min-width: 68px;
-      min-height: 68px;
-      max-width: 68px;
-      max-height: 68px;
+      width: 68px !important;
+      height: 68px !important;
+      min-width: 68px !important;
+      min-height: 68px !important;
+      max-width: 68px !important;
+      max-height: 68px !important;
       border-radius: 6px;
       overflow: hidden;
       background: #000;
       position: relative;
       border: 1px solid rgba(255,255,255,0.15);
       touch-action: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: block;
       flex-shrink: 0;
     }
 
     .item-card img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
+      width: 68px !important;
+      height: 68px !important;
+      object-fit: contain !important;
       pointer-events: none;
       display: block;
     }
@@ -225,7 +223,7 @@
 
     <!-- Unranked Pool -->
     <div id="unranked-section">
-      <h3>📦 미분류 보관함 (자동 저장 중)</h3>
+      <h3>📦 미분류 보관함</h3>
       <div id="unranked-pool" class="tier-items" data-tier="unranked"></div>
     </div>
   </div>
@@ -265,7 +263,6 @@
     let isDragging = false;
     let startX = 0, startY = 0;
 
-    // 초기화 시 자동 저장 데이터 복원
     window.addEventListener('DOMContentLoaded', () => {
       loadAutoSave();
     });
@@ -284,7 +281,6 @@
       this.value = '';
     });
 
-    // 아이템 카드 생성 함수 (고화질 유지)
     function createItemCard(imgSrc, parentId) {
       const card = document.createElement('div');
       card.className = 'item-card';
@@ -294,11 +290,11 @@
       card.appendChild(img);
 
       attachTouchAndClickEvents(card);
-      document.getElementById(parentId).appendChild(card);
+      const parent = document.getElementById(parentId);
+      if (parent) parent.appendChild(card);
       return card;
     }
 
-    // 초고속 터치/드래그 이벤터
     function attachTouchAndClickEvents(card) {
       let moved = false;
 
@@ -370,7 +366,7 @@
       selectedItem = null;
     }
 
-    // 💾 백업 & 자동저장 시스템
+    // 💾 백업 시스템
     function autoSave() {
       const data = collectData();
       localStorage.setItem('tierlist_autosave', JSON.stringify(data));
@@ -379,7 +375,9 @@
     function loadAutoSave() {
       const saved = localStorage.getItem('tierlist_autosave');
       if (saved) {
-        restoreData(JSON.parse(saved));
+        try {
+          restoreData(JSON.parse(saved));
+        } catch(e) {}
       }
     }
 
@@ -387,14 +385,17 @@
       const items = [];
       document.querySelectorAll('.item-card').forEach(card => {
         const parent = card.parentElement;
-        const tier = parent.getAttribute('data-tier') || 'unranked';
-        const imgSrc = card.querySelector('img').src;
-        items.push({ tier, imgSrc });
+        const tier = parent ? (parent.getAttribute('data-tier') || 'unranked') : 'unranked';
+        const img = card.querySelector('img');
+        if (img && img.src) {
+          items.push({ tier, imgSrc: img.src });
+        }
       });
       return items;
     }
 
     function restoreData(data) {
+      if (!Array.isArray(data)) return;
       document.querySelectorAll('.tier-items').forEach(el => el.innerHTML = '');
       data.forEach(item => {
         const targetId = item.tier === 'unranked' ? 'unranked-pool' : 'tier-' + item.tier;
@@ -421,19 +422,23 @@
     document.getElementById('backup-input').addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (!file) return;
+
       const reader = new FileReader();
       reader.onload = function(evt) {
         try {
           const data = JSON.parse(evt.target.result);
-          restoreData(data);
-          autoSave();
-          alert('백업이 정상적으로 불러와졌습니다!');
+          if (Array.isArray(data)) {
+            restoreData(data);
+            autoSave();
+          } else {
+            alert('올바른 백업 파일(.json)이 아닙니다.');
+          }
         } catch(err) {
           alert('올바른 백업 파일(.json)이 아닙니다.');
         }
       };
       reader.readAsText(file);
-      this.value = '';
+      this.value = ''; // 파일 선택 초기화
     });
 
     function clearData() {
@@ -443,13 +448,29 @@
       }
     }
 
-    // 🖼️ 고화질 이미지 추출
+    // 🖼️ 노왜곡 고화질 캡처
     function saveAsImage() {
       const board = document.getElementById('tier-board');
       html2canvas(board, {
         backgroundColor: '#0d0e10',
         scale: 2,
-        useCORS: true
+        useCORS: true,
+        onclone: function(clonedDoc) {
+          // 캡처 시 레이아웃 찌그러짐을 방지하는 인라인 스타일 재강제
+          const clonedCards = clonedDoc.querySelectorAll('.item-card');
+          clonedCards.forEach(card => {
+            card.style.width = '68px';
+            card.style.height = '68px';
+            card.style.minWidth = '68px';
+            card.style.minHeight = '68px';
+            const img = card.querySelector('img');
+            if (img) {
+              img.style.width = '68px';
+              img.style.height = '68px';
+              img.style.objectFit = 'contain';
+            }
+          });
+        }
       }).then(canvas => {
         const dataUrl = canvas.toDataURL('image/png');
         document.getElementById('result-img').src = dataUrl;
