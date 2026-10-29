@@ -44,7 +44,9 @@
       font-weight: 700;
       font-size: 0.85rem;
       cursor: pointer;
+      transition: background 0.2s;
     }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-primary { background: #3b82f6; border-color: #60a5fa; }
     .btn-success { background: #10b981; border-color: #34d399; }
     .btn-danger { background: #ef4444; border-color: #f87171; }
@@ -62,7 +64,7 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     }
 
-    .tier-row { display: flex; min-height: 80px; background: #181a1f; page-break-inside: avoid; }
+    .tier-row { display: flex; min-height: 80px; background: #181a1f; }
     .tier-label {
       width: 75px;
       min-width: 75px;
@@ -86,7 +88,6 @@
       align-content: flex-start;
     }
 
-    /* 아이템 카드 고정 스타일 */
     .item-card {
       width: 68px !important;
       height: 68px !important;
@@ -111,7 +112,6 @@
       pointer-events: none;
     }
 
-    /* 드래그 효과 */
     .item-card.dragging {
       opacity: 0.85;
       position: fixed;
@@ -121,7 +121,6 @@
       box-shadow: 0 10px 20px rgba(0,0,0,0.8);
     }
 
-    /* Unranked Pool */
     #unranked-section {
       margin-top: 16px;
       background: var(--panel);
@@ -141,7 +140,6 @@
       border: 2px dashed #2e323b;
     }
 
-    /* Modal */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
@@ -174,28 +172,6 @@
       color: #000;
       cursor: pointer;
     }
-
-    /* 🖨️ 브라우저 네이티브 저장/출력 스타일 */
-    @media print {
-      body {
-        background: #000 !important;
-        color: #fff !important;
-        padding: 0 !important;
-      }
-      h1, .toolbar, #unranked-section, .modal-overlay {
-        display: none !important;
-      }
-      .container {
-        max-width: 100% !important;
-        width: 100% !important;
-      }
-      #tier-board {
-        border: none !important;
-        box-shadow: none !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
-    }
   </style>
 </head>
 <body>
@@ -211,18 +187,18 @@
       <label class="btn" for="backup-input">📂 백업 불러오기</label>
       <input type="file" id="backup-input" accept=".json">
 
-      <button class="btn" onclick="saveAsImage()">🖼️ 고화질 저장 / 공유</button>
+      <button id="download-btn" class="btn" onclick="saveAsImage()">🖼️ 고화질 PNG 다운로드</button>
       <button class="btn btn-danger" onclick="clearData()">🔄 전체 초기화</button>
     </div>
 
     <!-- Tier Board -->
     <div id="tier-board">
-      <div class="tier-row"><div class="tier-label" style="background: #ff7f7f;">S</div><div class="tier-items" id="tier-S" data-tier="S"></div></div>
-      <div class="tier-row"><div class="tier-label" style="background: #ffbf7f;">A</div><div class="tier-items" id="tier-A" data-tier="A"></div></div>
-      <div class="tier-row"><div class="tier-label" style="background: #ffff7f;">B</div><div class="tier-items" id="tier-B" data-tier="B"></div></div>
-      <div class="tier-row"><div class="tier-label" style="background: #7fff7f;">C</div><div class="tier-items" id="tier-C" data-tier="C"></div></div>
-      <div class="tier-row"><div class="tier-label" style="background: #7fbfff;">D</div><div class="tier-items" id="tier-D" data-tier="D"></div></div>
-      <div class="tier-row"><div class="tier-label" style="background: #bf7fff;">F</div><div class="tier-items" id="tier-F" data-tier="F"></div></div>
+      <div class="tier-row" data-name="S" data-color="#ff7f7f"><div class="tier-label" style="background: #ff7f7f;">S</div><div class="tier-items" id="tier-S" data-tier="S"></div></div>
+      <div class="tier-row" data-name="A" data-color="#ffbf7f"><div class="tier-label" style="background: #ffbf7f;">A</div><div class="tier-items" id="tier-A" data-tier="A"></div></div>
+      <div class="tier-row" data-name="B" data-color="#ffff7f"><div class="tier-label" style="background: #ffff7f;">B</div><div class="tier-items" id="tier-B" data-tier="B"></div></div>
+      <div class="tier-row" data-name="C" data-color="#7fff7f"><div class="tier-label" style="background: #7fff7f;">C</div><div class="tier-items" id="tier-C" data-tier="C"></div></div>
+      <div class="tier-row" data-name="D" data-color="#7fbfff"><div class="tier-label" style="background: #7fbfff;">D</div><div class="tier-items" id="tier-D" data-tier="D"></div></div>
+      <div class="tier-row" data-name="F" data-color="#bf7fff"><div class="tier-label" style="background: #bf7fff;">F</div><div class="tier-items" id="tier-F" data-tier="F"></div></div>
     </div>
 
     <!-- Unranked Pool -->
@@ -445,9 +421,160 @@
       }
     }
 
-    // 🖼️ 브라우저 네이티브 엔진 활용 (Canvas/외부 API 없음)
-    function saveAsImage() {
-      window.print();
+    // 🖼️ 100% 원본 비율 보존 다이렉트 PNG 생성기 (라이브러리/인쇄 제거)
+    async function saveAsImage() {
+      const btn = document.getElementById('download-btn');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '⏳ 초고화질 PNG 생성 중...';
+      btn.disabled = true;
+
+      try {
+        const rows = document.querySelectorAll('.tier-row');
+        const scale = 4; // 초고해상도 4배율
+        const labelWidth = 80 * scale;
+        const itemSize = 70 * scale;
+        const padding = 6 * scale;
+        const gap = 6 * scale;
+        const borderGap = 2 * scale;
+        const maxCols = 8;
+
+        const canvasWidth = labelWidth + (padding * 2) + (maxCols * itemSize) + ((maxCols - 1) * gap);
+        
+        const rowHeights = [];
+        let totalHeight = 0;
+
+        rows.forEach(row => {
+          const items = row.querySelectorAll('.item-card');
+          const count = items.length;
+          const rowsCount = Math.max(1, Math.ceil(count / maxCols));
+          const rowH = (padding * 2) + (rowsCount * itemSize) + ((rowsCount - 1) * gap);
+          rowHeights.push(rowH);
+          totalHeight += rowH;
+        });
+
+        totalHeight += (rows.length - 1) * borderGap;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = canvasWidth;
+        canvas.height = totalHeight;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = '#0d0e10';
+        ctx.fillRect(0, 0, canvasWidth, totalHeight);
+
+        let currentY = 0;
+
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          const rowH = rowHeights[i];
+          const labelName = row.getAttribute('data-name');
+          const labelBg = row.getAttribute('data-color');
+          const items = row.querySelectorAll('.item-card');
+
+          ctx.fillStyle = '#141518';
+          ctx.fillRect(0, currentY, canvasWidth, rowH);
+
+          ctx.fillStyle = labelBg;
+          ctx.fillRect(0, currentY, labelWidth, rowH);
+
+          ctx.fillStyle = '#000000';
+          ctx.font = `900 ${28 * scale}px -apple-system, BlinkMacSystemFont, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(labelName, labelWidth / 2, currentY + (rowH / 2));
+
+          let col = 0;
+          let r = 0;
+
+          for (let j = 0; j < items.length; j++) {
+            const card = items[j];
+            const imgSrc = card.getAttribute('data-src');
+
+            const x = labelWidth + padding + (col * (itemSize + gap));
+            const y = currentY + padding + (r * (itemSize + gap));
+
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(x, y, itemSize, itemSize);
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 1 * scale;
+            ctx.strokeRect(x, y, itemSize, itemSize);
+
+            if (imgSrc) {
+              await new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                  const imgRatio = img.width / img.height;
+                  let drawW = itemSize;
+                  let drawH = itemSize;
+                  let drawX = x;
+                  let drawY = y;
+
+                  if (imgRatio > 1) {
+                    drawH = itemSize / imgRatio;
+                    drawY = y + (itemSize - drawH) / 2;
+                  } else {
+                    drawW = itemSize * imgRatio;
+                    drawX = x + (itemSize - drawW) / 2;
+                  }
+
+                  ctx.drawImage(img, drawX, drawY, drawW, drawH);
+                  resolve();
+                };
+                img.onerror = () => resolve();
+                img.src = imgSrc;
+              });
+            }
+
+            col++;
+            if (col >= maxCols) {
+              col = 0;
+              r++;
+            }
+          }
+
+          currentY += rowH + borderGap;
+        }
+
+        canvas.toBlob(function(blob) {
+          if (!blob) {
+            alert('이미지 생성에 실패했습니다.');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            return;
+          }
+
+          const fileName = `tierlist-${new Date().toISOString().slice(0,10)}.png`;
+          const file = new File([blob], fileName, { type: 'image/png' });
+
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({
+              files: [file],
+              title: '완성된 티어표'
+            }).catch(() => {}).finally(() => {
+              btn.innerHTML = originalText;
+              btn.disabled = false;
+            });
+          } else {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+          }
+        }, 'image/png', 1.0);
+
+      } catch (err) {
+        console.error(err);
+        alert('이미지 생성 중 오류가 발생했습니다.');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
     }
   </script>
 </body>
