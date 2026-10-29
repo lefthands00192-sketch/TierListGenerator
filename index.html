@@ -45,7 +45,9 @@
       font-weight: 700;
       font-size: 0.85rem;
       cursor: pointer;
+      transition: background 0.2s;
     }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-primary { background: #3b82f6; border-color: #60a5fa; }
     .btn-success { background: #10b981; border-color: #34d399; }
     .btn-danger { background: #ef4444; border-color: #f87171; }
@@ -168,22 +170,6 @@
       color: #000;
       cursor: pointer;
     }
-
-    .preview-img-container {
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin: 10px 0;
-    }
-
-    .preview-img {
-      max-width: 100%;
-      max-height: 60vh;
-      display: block;
-      border-radius: 6px;
-      border: 1px solid #444;
-    }
   </style>
 </head>
 <body>
@@ -199,7 +185,7 @@
       <label class="btn" for="backup-input">📂 백업 불러오기</label>
       <input type="file" id="backup-input" accept=".json">
 
-      <button class="btn" onclick="saveAsImage()">🖼️ 이미지 다운로드</button>
+      <button id="download-btn" class="btn" onclick="saveAsImage()">🖼️ 이미지 다운로드</button>
       <button class="btn btn-danger" onclick="clearData()">🔄 전체 초기화</button>
     </div>
 
@@ -234,18 +220,6 @@
       </div>
       <button class="btn" style="width:100%; background:#333;" onclick="moveTo('unranked')">미분류로 이동</button>
       <button class="btn" style="width:100%; margin-top:6px; background:#181818;" onclick="closeModal('move-modal')">취소</button>
-    </div>
-  </div>
-
-  <!-- Image Save Modal -->
-  <div class="modal-overlay" id="img-modal">
-    <div class="modal-box">
-      <h3>완성된 티어표</h3>
-      <p style="font-size:0.8rem; color:#aaa;">이미지를 길게 누르면 사진 앱/앨범에 저장됩니다.</p>
-      <div class="preview-img-container">
-        <img id="result-img" class="preview-img">
-      </div>
-      <button class="btn" style="width:100%;" onclick="closeModal('img-modal')">닫기</button>
     </div>
   </div>
 
@@ -442,18 +416,64 @@
       }
     }
 
-    // 🖼️ 4배율(scale: 4) 초고화질 추출
+    // 🖼️ 모달창 제거 & 다이렉트 고화질 다운로드/공유
     function saveAsImage() {
       const board = document.getElementById('tier-board');
+      const btn = document.getElementById('download-btn');
+      const originalText = btn.innerHTML;
+      
+      btn.innerHTML = '⏳ 처리 중...';
+      btn.disabled = true;
+
       html2canvas(board, {
         backgroundColor: '#0d0e10',
-        scale: 4, // 4x 초고해상도 적용
+        scale: 4, // 4x 초고해상도 원본 렌더링 유지
         useCORS: true,
         logging: false
       }).then(canvas => {
-        const dataUrl = canvas.toDataURL('image/png', 1.0);
-        document.getElementById('result-img').src = dataUrl;
-        document.getElementById('img-modal').classList.add('active');
+        canvas.toBlob(function(blob) {
+          if (!blob) {
+            alert('이미지 생성에 실패했습니다.');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            return;
+          }
+
+          const fileName = `tierlist-${new Date().toISOString().slice(0,10)}.png`;
+          const file = new File([blob], fileName, { type: 'image/png' });
+
+          // 1. 모바일 기기 네이티브 저장/공유 (Web Share API - iOS/Android)
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({
+              files: [file],
+              title: '완성된 티어표'
+            }).catch(err => {
+              console.log('공유 취소 또는 에러:', err);
+            }).finally(() => {
+              btn.innerHTML = originalText;
+              btn.disabled = false;
+            });
+          } 
+          // 2. PC 브라우저 또는 Share API 미지원 환경 다이렉트 다운로드
+          else {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+          }
+        }, 'image/png', 1.0); // 1.0 최고 품질로 Blob 변환
+      }).catch(err => {
+        console.error(err);
+        alert('이미지 저장 중 오류가 발생했습니다.');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
       });
     }
   </script>
