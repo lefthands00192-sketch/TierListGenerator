@@ -19,6 +19,10 @@
       user-select: none; -webkit-user-select: none;
       -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
     }
+    /* iOS Safari는 user-select:none인 입력칸에 타이핑이 안 되므로 예외 처리 */
+    input[type="text"], select {
+      user-select: text; -webkit-user-select: text;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
@@ -39,7 +43,7 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
-      margin-bottom: 16px;
+      margin-bottom: 10px;
     }
     .btn {
       display: flex;
@@ -62,14 +66,37 @@
     .btn:disabled { opacity: 0.6; cursor: not-allowed; }
     .btn-primary { background: #3b82f6; border-color: #60a5fa; }
     .btn-success { background: #10b981; border-color: #34d399; }
+    .btn-sheet { background: #0f9d58; border-color: #34d399; }
     .btn-accent {
       background: linear-gradient(135deg, #8b5cf6, #ec4899);
       border-color: #c4b5fd;
       box-shadow: 0 4px 14px rgba(139, 92, 246, 0.45);
     }
     .btn-danger { background: transparent; color: #f87171; border-color: #7f1d1d; }
-    .btn-wide { grid-column: 1 / -1; min-height: 38px; }
-    #file-input, #backup-input { display: none; }
+    .btn-wide { grid-column: 1 / -1; }
+    .btn-small { min-height: 38px; }
+    #file-input, #backup-input, #table-input { display: none; }
+
+    /* 단어 입력줄 */
+    .word-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    #word-input {
+      flex: 1;
+      min-width: 0;
+      min-height: 44px;
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0 12px;
+      font-size: 16px; /* iOS 확대 방지 */
+      outline: none;
+    }
+    #word-input:focus { border-color: #60a5fa; }
+    #word-add { white-space: nowrap; padding: 9px 16px; }
 
     /* Tier Table */
     #tier-board {
@@ -113,7 +140,7 @@
       outline-offset: -3px;
     }
 
-    /* 카드 (1:1 정사각형, 비율 유지) */
+    /* 카드 (이미지: 1:1 정사각형, 비율 유지) */
     .item-card {
       width: 68px;
       height: 68px;
@@ -134,6 +161,30 @@
       pointer-events: none;
       -webkit-user-drag: none;
     }
+
+    /* 카드 (단어) : 높이는 동일, 폭은 글자 수에 맞춰 자동 */
+    .item-card.text-card {
+      width: auto;
+      min-width: 68px;
+      max-width: 140px;
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 5px;
+      background: #2a2e38;
+      border-color: rgba(255,255,255,0.2);
+    }
+    .item-card.text-card .txt {
+      color: #f0f2f5;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.2;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+      pointer-events: none;
+    }
+
     .item-card.drag-origin { opacity: 0.3; }
     .item-card.ghost {
       position: fixed;
@@ -170,10 +221,11 @@
       background: #121316;
       border-radius: 8px;
       border: 2px dashed #2e323b;
+      align-content: flex-start;
     }
     #unranked-pool.drop-hover { border-color: #60a5fa; }
     #unranked-pool:empty::before {
-      content: "이미지를 업로드하면 여기에 쌓여요";
+      content: "이미지를 올리거나 단어를 입력하면 여기에 쌓여요";
       width: 100%;
       align-self: center;
       text-align: center;
@@ -213,6 +265,19 @@
       border: 1px solid rgba(255,255,255,0.15);
       margin: 0 auto 12px; display: block;
     }
+    #move-text {
+      display: none;
+      min-height: 52px;
+      margin: 0 auto 12px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #2a2e38;
+      border: 1px solid rgba(255,255,255,0.2);
+      font-weight: 700;
+      align-items: center;
+      justify-content: center;
+      word-break: break-word;
+    }
     .tier-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
     .t-btn {
       padding: 12px 0;
@@ -231,6 +296,33 @@
       border-radius: 8px; margin-bottom: 10px; background: #000;
       -webkit-touch-callout: default; -webkit-user-select: auto; user-select: auto;
     }
+
+    /* 단어 가져오기 모달 */
+    #import-modal .modal-box { max-width: 380px; }
+    #import-modal select {
+      width: 100%;
+      background: #181a1f; color: #fff;
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px; font-size: 16px; margin-bottom: 6px;
+    }
+    .opt {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.85rem; text-align: left;
+      padding: 6px 2px; color: #d1d5db;
+    }
+    .opt input { width: 18px; height: 18px; accent-color: #3b82f6; }
+    #import-count { margin: 8px 0 6px; font-size: 0.85rem; color: #d1d5db; }
+    #import-preview {
+      max-height: 150px; overflow-y: auto; text-align: left;
+      background: #181a1f; border-radius: 8px; padding: 6px; margin-bottom: 8px;
+    }
+    .chip {
+      display: inline-block;
+      background: #2a2e38; border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 6px; padding: 3px 7px; margin: 2px;
+      font-size: 0.75rem; font-weight: 700;
+    }
+    .chip.more { background: transparent; border-style: dashed; color: var(--muted); }
 
     /* Toast */
     #toast {
@@ -257,19 +349,27 @@
 
   <div class="container">
     <h1>🏆 티어표 생성기 Pro</h1>
-    <p class="hint">이미지를 탭하면 등급 선택 · 드래그하면 이동/순서 변경</p>
+    <p class="hint">이미지·단어를 탭하면 등급 선택 · 드래그하면 이동/순서 변경<br>새로고침하면 모두 초기화돼요 (보관은 💾 백업 저장)</p>
 
     <div class="toolbar">
       <label class="btn btn-primary" for="file-input">📷 이미지 업로드</label>
       <input type="file" id="file-input" multiple accept="image/*">
 
-      <button id="download-btn" class="btn btn-accent" onclick="saveAsImage()">🖼️ 이미지 다운로드</button>
+      <label class="btn btn-sheet" for="table-input">📊 엑셀/CSV 업로드</label>
+      <input type="file" id="table-input" accept=".xlsx,.xls,.xlsm,.csv,.tsv,.txt">
 
       <button class="btn btn-success" onclick="exportBackup()">💾 백업 저장</button>
       <label class="btn" for="backup-input">📂 백업 불러오기</label>
       <input type="file" id="backup-input" accept=".json">
 
-      <button class="btn btn-danger btn-wide" onclick="clearData()">🔄 전체 초기화</button>
+      <button id="download-btn" class="btn btn-accent btn-wide" onclick="saveAsImage()">🖼️ 이미지 다운로드</button>
+      <button class="btn btn-danger btn-wide btn-small" onclick="clearData()">🔄 전체 초기화</button>
+    </div>
+
+    <!-- 단어 입력 -->
+    <div class="word-bar">
+      <input type="text" id="word-input" placeholder="단어 입력 · 엑셀 셀 복사 후 붙여넣기" enterkeyhint="done" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <button class="btn btn-primary" id="word-add">➕ 추가</button>
     </div>
 
     <!-- Tier Board -->
@@ -294,6 +394,7 @@
     <div class="modal-box">
       <h3>배치할 등급 선택</h3>
       <img id="move-thumb" class="modal-thumb" alt="">
+      <div id="move-text"></div>
       <div class="tier-grid">
         <button class="t-btn" style="background:#ff7f7f;" onclick="moveTo('S')">S</button>
         <button class="t-btn" style="background:#ffbf7f;" onclick="moveTo('A')">A</button>
@@ -303,8 +404,25 @@
         <button class="t-btn" style="background:#bf7fff;" onclick="moveTo('F')">F</button>
       </div>
       <button class="btn" style="background:#333;" onclick="moveTo('unranked')">미분류로 이동</button>
-      <button class="btn btn-danger" onclick="deleteSelected()">🗑️ 이 이미지 삭제</button>
+      <button class="btn" id="move-edit" style="display:none;" onclick="editSelected()">✏️ 텍스트 수정</button>
+      <button class="btn btn-danger" onclick="deleteSelected()">🗑️ 삭제</button>
       <button class="btn" style="background:#181818;" onclick="closeModal('move-modal')">취소</button>
+    </div>
+  </div>
+
+  <!-- 단어 가져오기 모달 (붙여넣기 / 엑셀·CSV) -->
+  <div class="modal-overlay" id="import-modal">
+    <div class="modal-box">
+      <h3>📋 단어 가져오기</h3>
+      <div id="import-sheet-wrap" style="display:none;">
+        <select id="import-sheet"></select>
+      </div>
+      <label class="opt"><input type="checkbox" id="opt-header"> 첫 줄(제목)은 제외</label>
+      <label class="opt"><input type="checkbox" id="opt-dedupe" checked> 중복 단어 제거 (이미 있는 단어 포함)</label>
+      <p id="import-count"></p>
+      <div id="import-preview"></div>
+      <button class="btn btn-primary" id="import-confirm" onclick="confirmImport()">미분류에 추가</button>
+      <button class="btn" style="background:#181818;" onclick="closeModal('import-modal')">취소</button>
     </div>
   </div>
 
@@ -320,73 +438,108 @@
   <div id="toast"></div>
 
   <script>
-    const STATE_KEY = 'state';
-    const LEGACY_KEY = 'tierlist_autosave'; // 예전 버전(localStorage) 데이터 이전용
     const POOL_ID = 'unranked-pool';
+    const MAX_IMPORT = 500;
 
     let selectedItem = null;
     let drag = null;
-    let loaded = false;      // 불러오기 완료 전에 빈 상태로 덮어쓰는 것을 방지
-    let saveTimer = null;
     let toastTimer = null;
     let previewUrl = null;
+    let importState = null;
 
-    /* ---------- 저장소 (IndexedDB 우선, 용량 제한 없음에 가깝게) ---------- */
-    let dbPromise = null;
-    function openDB() {
-      if (!dbPromise) {
-        dbPromise = new Promise((resolve, reject) => {
-          if (!window.indexedDB) { reject(new Error('no idb')); return; }
-          const req = indexedDB.open('tierlist-pro', 1);
-          req.onupgradeneeded = () => req.result.createObjectStore('kv');
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => reject(req.error);
-        });
+    /* 새로고침 = 초기화 : 예전 버전이 남겨둔 저장 데이터는 정리 */
+    (function purgeOldStorage() {
+      try { localStorage.removeItem('tierlist_autosave'); localStorage.removeItem('tierlist_state'); } catch (e) {}
+      try { if (window.indexedDB) indexedDB.deleteDatabase('tierlist-pro'); } catch (e) {}
+    })();
+
+    /* ==PURE-START== (화면과 무관한 텍스트 처리 함수들) */
+    const MAX_TEXT = 60;
+
+    function normalizeText(v) {
+      return String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, MAX_TEXT);
+    }
+
+    // 구분자 기반 표 파서 (따옴표/줄바꿈 처리)
+    function parseDelimited(text, delim, quotes) {
+      const rows = [];
+      let row = [], cell = '', inQ = false;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (inQ) {
+          if (ch === '"') {
+            if (text[i + 1] === '"') { cell += '"'; i++; }
+            else inQ = false;
+          } else cell += ch;
+        } else if (quotes && ch === '"' && cell === '') {
+          inQ = true;
+        } else if (ch === delim) {
+          row.push(cell); cell = '';
+        } else if (ch === '\n' || ch === '\r') {
+          if (ch === '\r' && text[i + 1] === '\n') i++;
+          row.push(cell); rows.push(row); row = []; cell = '';
+        } else {
+          cell += ch;
+        }
       }
-      return dbPromise;
+      if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+      return rows;
     }
-    async function idbGet(key) {
-      const db = await openDB();
-      return new Promise((resolve, reject) => {
-        const req = db.transaction('kv', 'readonly').objectStore('kv').get(key);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
+
+    // 스프레드시트에서 복사한 텍스트(탭 구분) 또는 일반 줄바꿈 텍스트
+    function parsePastedText(text) {
+      text = String(text).replace(/\r\n?/g, '\n').replace(/^\n+|\n+$/g, '');
+      if (!text) return [];
+      if (text.indexOf('\t') >= 0) return parseDelimited(text, '\t', true);
+      return text.split('\n').map(l => [l]);
     }
-    async function idbSet(key, value) {
-      const db = await openDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction('kv', 'readwrite');
-        tx.objectStore('kv').put(value, key);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-        tx.onabort = () => reject(tx.error || new Error('aborted'));
-      });
+
+    function detectDelimiter(text) {
+      const first = text.split(/\r?\n/).find(l => l.trim()) || '';
+      const c = { ',': 0, ';': 0, '\t': 0 };
+      let q = false;
+      for (const ch of first) {
+        if (ch === '"') q = !q;
+        else if (!q && Object.prototype.hasOwnProperty.call(c, ch)) c[ch]++;
+      }
+      let best = ',', n = 0;
+      for (const k of Object.keys(c)) { if (c[k] > n) { best = k; n = c[k]; } }
+      return best;
     }
-    async function idbDelete(key) {
-      const db = await openDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction('kv', 'readwrite');
-        tx.objectStore('kv').delete(key);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      });
-    }
-    async function storageGet(key) {
-      try { return await idbGet(key); }
-      catch (e) {
-        try { const v = localStorage.getItem('tierlist_' + key); return v ? JSON.parse(v) : undefined; }
-        catch (_) { return undefined; }
+
+    // UTF-8 / UTF-16 / EUC-KR(엑셀 CSV 기본) 자동 판별
+    function decodeText(buf) {
+      let bytes = new Uint8Array(buf);
+      if (bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) bytes = bytes.subarray(3);
+      else if (bytes[0] === 0xFF && bytes[1] === 0xFE) return new TextDecoder('utf-16le').decode(bytes.subarray(2));
+      else if (bytes[0] === 0xFE && bytes[1] === 0xFF) return new TextDecoder('utf-16be').decode(bytes.subarray(2));
+      try {
+        return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      } catch (e) {
+        try { return new TextDecoder('euc-kr').decode(bytes); }
+        catch (_) { return new TextDecoder().decode(bytes); }
       }
     }
-    async function storageSet(key, value) {
-      try { await idbSet(key, value); }
-      catch (e) { localStorage.setItem('tierlist_' + key, JSON.stringify(value)); }
+
+    // 표(2차원 배열) → 단어 목록 (왼쪽→오른쪽, 위→아래 순서)
+    function rowsToItems(rows, skipHeader, dedupe, existing) {
+      const out = [];
+      const seen = new Set(existing || []);
+      const list = skipHeader ? rows.slice(1) : rows;
+      for (const row of list) {
+        for (const cell of row) {
+          const t = normalizeText(cell);
+          if (!t) continue;
+          if (dedupe) {
+            if (seen.has(t)) continue;
+            seen.add(t);
+          }
+          out.push(t);
+        }
+      }
+      return out;
     }
-    async function storageRemove(key) {
-      try { await idbDelete(key); } catch (e) {}
-      try { localStorage.removeItem('tierlist_' + key); } catch (e) {}
-    }
+    /* ==PURE-END== */
 
     /* ---------- 유틸 ---------- */
     function toast(msg) {
@@ -394,7 +547,7 @@
       t.textContent = msg;
       t.classList.add('show');
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
     }
 
     function todayStr() {
@@ -408,11 +561,15 @@
       return document.getElementById('tier-' + tier) || document.getElementById(POOL_ID);
     }
 
+    function allContainers() {
+      return document.querySelectorAll('.tier-items, #' + POOL_ID);
+    }
+
     function updateCounts() {
       document.getElementById('pool-count').textContent = document.getElementById(POOL_ID).children.length;
     }
 
-    /* ---------- 이미지 업로드 (긴 변 1280px로 축소 → 저장 용량/속도 개선) ---------- */
+    /* ---------- 이미지 업로드 (긴 변 1280px로 축소) ---------- */
     function loadImageFromFile(file) {
       return new Promise((resolve, reject) => {
         const url = URL.createObjectURL(file);
@@ -462,11 +619,16 @@
           fail++;
         }
       }
-      autoSave();
+      updateCounts();
       toast(fail ? ok + '장 추가, ' + fail + '장 실패' : ok + '장 추가됨');
     });
 
-    /* ---------- 카드 ---------- */
+    /* ---------- 카드 만들기 ---------- */
+    function bindCard(card) {
+      card.addEventListener('pointerdown', onPointerDown);
+      card.addEventListener('contextmenu', e => e.preventDefault());
+    }
+
     function createItemCard(src, parent) {
       const card = document.createElement('div');
       card.className = 'item-card';
@@ -477,12 +639,233 @@
       img.draggable = false;
       card.appendChild(img);
 
-      card.addEventListener('pointerdown', onPointerDown);
-      card.addEventListener('contextmenu', e => e.preventDefault());
-
+      bindCard(card);
       if (parent) parent.appendChild(card);
       return card;
     }
+
+    function textFontSize(text) {
+      const n = Array.from(text).length;
+      return n <= 2 ? 20 : n <= 4 ? 16 : n <= 8 ? 14 : n <= 14 ? 12 : n <= 30 ? 11 : 10;
+    }
+
+    function setCardText(card, text) {
+      const span = card.querySelector('.txt');
+      span.textContent = text;
+      span.style.fontSize = textFontSize(text) + 'px';
+    }
+
+    function createTextCard(text, parent) {
+      const card = document.createElement('div');
+      card.className = 'item-card text-card';
+      card.dataset.kind = 'text';
+
+      const span = document.createElement('span');
+      span.className = 'txt';
+      card.appendChild(span);
+      setCardText(card, text);
+
+      bindCard(card);
+      if (parent) parent.appendChild(card);
+      return card;
+    }
+
+    /* ---------- 단어 입력 / 붙여넣기 ---------- */
+    // 한 개면 바로 추가, 여러 개면 가져오기 창을 띄움
+    function handleTextInput(text) {
+      const rows = parsePastedText(text);
+      const items = rowsToItems(rows, false, false);
+      if (!items.length) return false;
+      if (items.length === 1) {
+        createTextCard(items[0], document.getElementById(POOL_ID));
+        updateCounts();
+        toast('단어 추가됨');
+        return true;
+      }
+      openImport([{ name: '붙여넣기', rows }]);
+      return true;
+    }
+
+    const wordInput = document.getElementById('word-input');
+
+    function submitWord() {
+      const v = wordInput.value;
+      if (!v.trim()) return;
+      if (handleTextInput(v)) wordInput.value = '';
+    }
+
+    wordInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.isComposing) {
+        e.preventDefault();
+        submitWord();
+      }
+    });
+    document.getElementById('word-add').addEventListener('click', submitWord);
+
+    // 입력칸 안에서든, 화면 어디서든(PC) 여러 셀을 붙여넣으면 처리
+    document.addEventListener('paste', e => {
+      const t = e.target;
+      if (t && t.closest && t.closest('.modal-overlay')) return;
+      const editable = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+      if (editable && t.id !== 'word-input') return;
+
+      const cd = e.clipboardData || window.clipboardData;
+      const text = cd ? cd.getData('text') : '';
+      if (!text || !text.trim()) return;
+
+      const multi = /[\t\r\n]/.test(text.trim());
+      if (editable && !multi) return;   // 입력칸에 한 단어 붙여넣기는 기본 동작
+
+      e.preventDefault();
+      if (editable && wordInput.value.trim() === '') wordInput.value = '';
+      handleTextInput(text);
+    });
+
+    /* ---------- 엑셀 / CSV 업로드 ---------- */
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error('스크립트 로드 실패'));
+        document.head.appendChild(s);
+      });
+    }
+
+    let xlsxPromise = null;
+    function ensureXLSX() {
+      if (window.XLSX) return Promise.resolve();
+      if (!xlsxPromise) {
+        xlsxPromise = loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js')
+          .catch(err => { xlsxPromise = null; throw err; });
+      }
+      return xlsxPromise;
+    }
+
+    async function readTableFile(file) {
+      const name = file.name.toLowerCase();
+      const buf = await file.arrayBuffer();
+
+      if (/\.(csv|tsv|txt)$/.test(name)) {
+        const text = decodeText(buf);
+        let rows;
+        if (name.endsWith('.txt')) {
+          rows = text.replace(/\r\n?/g, '\n').split('\n').map(l => [l]);
+        } else {
+          const delim = name.endsWith('.tsv') ? '\t' : detectDelimiter(text);
+          rows = parseDelimited(text, delim, true);
+        }
+        return [{ name: file.name, rows }];
+      }
+
+      await ensureXLSX();
+      const wb = XLSX.read(buf, { type: 'array' });
+      return wb.SheetNames
+        .map(n => ({
+          name: n,
+          rows: XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: false, defval: '' })
+        }))
+        .filter(s => s.rows.length);
+    }
+
+    document.getElementById('table-input').addEventListener('change', async function (e) {
+      const file = e.target.files[0];
+      this.value = '';
+      if (!file) return;
+
+      try {
+        toast('파일 읽는 중...');
+        const sheets = await readTableFile(file);
+        if (!sheets.length || sheets.every(s => !rowsToItems(s.rows, false, false).length)) {
+          toast('읽을 수 있는 내용이 없어요.');
+          return;
+        }
+        openImport(sheets);
+      } catch (err) {
+        console.error(err);
+        toast('파일을 읽지 못했어요. (엑셀은 인터넷 연결이 필요해요)');
+      }
+    });
+
+    /* ---------- 가져오기 모달 ---------- */
+    function existingTexts() {
+      const s = new Set();
+      document.querySelectorAll('.item-card.text-card:not(.ghost) .txt').forEach(el => s.add(el.textContent));
+      return s;
+    }
+
+    function currentImportItems() {
+      const sheet = importState.sheets[importState.idx];
+      const dedupe = document.getElementById('opt-dedupe').checked;
+      return rowsToItems(
+        sheet.rows,
+        document.getElementById('opt-header').checked,
+        dedupe,
+        dedupe ? existingTexts() : null
+      );
+    }
+
+    function refreshImport() {
+      if (!importState) return;
+      const items = currentImportItems();
+      const countEl = document.getElementById('import-count');
+      countEl.textContent = items.length > MAX_IMPORT
+        ? items.length + '개 인식됨 (처음 ' + MAX_IMPORT + '개만 추가돼요)'
+        : items.length + '개 인식됨';
+
+      const prev = document.getElementById('import-preview');
+      prev.innerHTML = '';
+      items.slice(0, 40).forEach(t => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = t;
+        prev.appendChild(chip);
+      });
+      if (items.length > 40) {
+        const more = document.createElement('span');
+        more.className = 'chip more';
+        more.textContent = '… 외 ' + (items.length - 40) + '개';
+        prev.appendChild(more);
+      }
+      document.getElementById('import-confirm').disabled = items.length === 0;
+    }
+
+    function openImport(sheets) {
+      importState = { sheets, idx: 0 };
+      const sel = document.getElementById('import-sheet');
+      sel.innerHTML = '';
+      sheets.forEach((s, i) => {
+        const o = document.createElement('option');
+        o.value = String(i);
+        o.textContent = s.name;
+        sel.appendChild(o);
+      });
+      document.getElementById('import-sheet-wrap').style.display = sheets.length > 1 ? 'block' : 'none';
+      document.getElementById('opt-header').checked = false;
+      document.getElementById('opt-dedupe').checked = true;
+      refreshImport();
+      document.getElementById('import-modal').classList.add('active');
+    }
+
+    function confirmImport() {
+      if (!importState) return;
+      let items = currentImportItems();
+      if (!items.length) { toast('추가할 항목이 없어요.'); return; }
+      const over = items.length > MAX_IMPORT;
+      if (over) items = items.slice(0, MAX_IMPORT);
+
+      const pool = document.getElementById(POOL_ID);
+      items.forEach(t => createTextCard(t, pool));
+      updateCounts();
+      closeModal('import-modal');
+      toast(items.length + '개 추가됨' + (over ? ' (최대 ' + MAX_IMPORT + '개)' : ''));
+    }
+
+    document.getElementById('import-sheet').addEventListener('change', function () {
+      if (importState) { importState.idx = Number(this.value) || 0; refreshImport(); }
+    });
+    document.getElementById('opt-header').addEventListener('change', refreshImport);
+    document.getElementById('opt-dedupe').addEventListener('change', refreshImport);
 
     /* ---------- 드래그 (터치/마우스 공통, 놓은 위치에 끼워넣기) ---------- */
     function onPointerDown(e) {
@@ -503,6 +886,7 @@
       drag.moved = true;
       const g = drag.card.cloneNode(true);
       g.classList.add('ghost');
+      g.style.width = drag.card.getBoundingClientRect().width + 'px';
       document.body.appendChild(g);
       drag.ghost = g;
       drag.card.classList.add('drag-origin');
@@ -562,7 +946,7 @@
         cleanupDrag();
         if (loc && !loc.self) {
           loc.container.insertBefore(d.card, loc.ref || null);
-          autoSave();
+          updateCounts();
         }
       } else {
         cleanupDrag();
@@ -587,23 +971,50 @@
     /* ---------- 등급 선택 모달 ---------- */
     function openMoveModal(card) {
       selectedItem = card;
-      const img = card.querySelector('img');
-      document.getElementById('move-thumb').src = img ? img.src : '';
+      const isText = card.dataset.kind === 'text';
+      const thumb = document.getElementById('move-thumb');
+      const tbox = document.getElementById('move-text');
+      const editBtn = document.getElementById('move-edit');
+
+      if (isText) {
+        thumb.style.display = 'none';
+        thumb.removeAttribute('src');
+        tbox.style.display = 'flex';
+        tbox.textContent = card.querySelector('.txt').textContent;
+        editBtn.style.display = 'flex';
+      } else {
+        const img = card.querySelector('img');
+        thumb.style.display = 'block';
+        thumb.src = img ? img.src : '';
+        tbox.style.display = 'none';
+        editBtn.style.display = 'none';
+      }
       document.getElementById('move-modal').classList.add('active');
     }
 
     function moveTo(tier) {
       if (!selectedItem) return;
       containerFor(tier).appendChild(selectedItem);
-      autoSave();
+      updateCounts();
+      closeModal('move-modal');
+    }
+
+    function editSelected() {
+      if (!selectedItem || selectedItem.dataset.kind !== 'text') return;
+      const cur = selectedItem.querySelector('.txt').textContent;
+      const v = prompt('텍스트 수정', cur);
+      if (v === null) return;
+      const t = normalizeText(v);
+      if (!t) { toast('내용이 비어 있어요.'); return; }
+      setCardText(selectedItem, t);
       closeModal('move-modal');
     }
 
     function deleteSelected() {
       if (!selectedItem) return;
-      if (!confirm('이 이미지를 삭제할까요?')) return;
+      if (!confirm('삭제할까요?')) return;
       selectedItem.remove();
-      autoSave();
+      updateCounts();
       closeModal('move-modal');
     }
 
@@ -613,6 +1024,7 @@
         selectedItem = null;
         document.getElementById('move-thumb').removeAttribute('src');
       }
+      if (id === 'import-modal') importState = null;
     }
 
     function closePreview() {
@@ -629,78 +1041,39 @@
       });
     });
 
-    /* ---------- 자동 저장 / 불러오기 ---------- */
+    /* ---------- 백업 / 초기화 (자동 저장 없음: 새로고침하면 초기화) ---------- */
     function collectData() {
       const items = [];
       document.querySelectorAll('.item-card:not(.ghost)').forEach(card => {
-        const img = card.querySelector('img');
         const parent = card.parentElement;
-        if (!img || !img.src || !parent) return;
-        items.push({ tier: parent.getAttribute('data-tier') || 'unranked', imgSrc: img.src });
+        if (!parent) return;
+        const tier = parent.getAttribute('data-tier') || 'unranked';
+        if (card.dataset.kind === 'text') {
+          items.push({ tier, text: card.querySelector('.txt').textContent });
+        } else {
+          const img = card.querySelector('img');
+          if (img && img.src) items.push({ tier, imgSrc: img.src });
+        }
       });
       return items;
     }
 
     function restoreData(data) {
       if (!Array.isArray(data)) return;
-      document.querySelectorAll('.tier-items').forEach(el => el.innerHTML = '');
+      allContainers().forEach(el => el.innerHTML = '');
       data.forEach(item => {
-        if (!item || typeof item.imgSrc !== 'string') return;
-        createItemCard(item.imgSrc, containerFor(item.tier));
+        if (!item) return;
+        const parent = containerFor(item.tier);
+        if (typeof item.text === 'string') {
+          const t = normalizeText(item.text);
+          if (t) createTextCard(t, parent);
+        } else if (typeof item.imgSrc === 'string') {
+          createItemCard(item.imgSrc, parent);
+        }
       });
       updateCounts();
     }
 
-    function autoSave() {
-      updateCounts();
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(doSave, 120);
-    }
-
-    async function doSave() {
-      clearTimeout(saveTimer);
-      if (!loaded) return false;
-      try {
-        await storageSet(STATE_KEY, collectData());
-        return true;
-      } catch (e) {
-        console.error(e);
-        toast('⚠️ 자동 저장에 실패했어요. 백업 저장을 이용해 주세요.');
-        return false;
-      }
-    }
-
-    async function loadAutoSave() {
-      let data = await storageGet(STATE_KEY);
-      let fromLegacy = false;
-
-      if (!Array.isArray(data)) {
-        try {
-          const legacy = localStorage.getItem(LEGACY_KEY);
-          if (legacy) {
-            const parsed = JSON.parse(legacy);
-            if (Array.isArray(parsed)) { data = parsed; fromLegacy = true; }
-          }
-        } catch (e) {}
-      }
-
-      if (Array.isArray(data)) restoreData(data);
-      updateCounts();
-      loaded = true;
-
-      if (fromLegacy) {
-        const ok = await doSave();
-        if (ok) { try { localStorage.removeItem(LEGACY_KEY); } catch (e) {} }
-      }
-    }
-
-    window.addEventListener('DOMContentLoaded', loadAutoSave);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') doSave();
-    });
-    window.addEventListener('pagehide', () => { doSave(); });
-
-    /* ---------- 백업 ---------- */
     function exportBackup() {
       const data = collectData();
       if (data.length === 0) { toast('백업할 아이템이 없습니다.'); return; }
@@ -724,18 +1097,14 @@
         if (collectData().length > 0 && !confirm('현재 내용이 백업 내용으로 대체됩니다. 계속할까요?')) return;
 
         restoreData(parsed);
-        autoSave();
-        toast('백업을 불러왔어요 (' + parsed.length + '장)');
+        toast('백업을 불러왔어요 (' + parsed.length + '개)');
       };
       reader.readAsText(file);
     });
 
-    async function clearData() {
-      if (!confirm('모든 내용과 저장된 데이터를 초기화하시겠습니까?')) return;
-      document.querySelectorAll('.tier-items').forEach(el => el.innerHTML = '');
-      clearTimeout(saveTimer);
-      await storageRemove(STATE_KEY);
-      try { localStorage.removeItem(LEGACY_KEY); } catch (e) {}
+    function clearData() {
+      if (!confirm('모든 내용을 초기화하시겠습니까?')) return;
+      allContainers().forEach(el => el.innerHTML = '');
       updateCounts();
       toast('초기화되었습니다.');
     }
@@ -751,9 +1120,7 @@
       setTimeout(() => URL.revokeObjectURL(url), 4000);
     }
 
-    /* ---------- 🖼️ 고화질 이미지 저장 ----------
-       html2canvas를 쓰지 않고 캔버스에 직접 그립니다.
-       → 이미지 비율이 유지되고, 원본 해상도로 선명하게 출력됩니다. */
+    /* ---------- 🖼️ 고화질 이미지 저장 (캔버스 직접 렌더링) ---------- */
     function roundRect(ctx, x, y, w, h, r) {
       r = Math.min(r, w / 2, h / 2);
       ctx.beginPath();
@@ -782,24 +1149,82 @@
       return src;
     }
 
-    function drawCard(ctx, card, br, pxScale) {
-      const img = card.querySelector('img');
-      const r = card.getBoundingClientRect();
-      const x = r.left - br.left, y = r.top - br.top, w = r.width, h = r.height;
+    // 화면에서 실제로 줄바꿈된 모양 그대로 텍스트 줄 정보를 읽어옴
+    function getTextLines(el) {
+      const node = el.firstChild;
+      if (!node || node.nodeType !== 3) return [];
+      const s = node.data;
+      const range = document.createRange();
+      const lines = [];
+      let cur = null;
+      for (let i = 0; i < s.length;) {
+        const cp = s.codePointAt(i);
+        const len = cp > 0xffff ? 2 : 1;
+        const ch = s.substr(i, len);
+        range.setStart(node, i);
+        range.setEnd(node, i + len);
+        const rects = range.getClientRects();
+        if (rects.length && (rects[0].width > 0 || rects[0].height > 0)) {
+          const r = rects[0];
+          if (!cur || Math.abs(r.top - cur.top) > r.height * 0.5) {
+            cur = { top: r.top, bottom: r.bottom, left: r.left, text: ch };
+            lines.push(cur);
+          } else {
+            cur.text += ch;
+            cur.bottom = Math.max(cur.bottom, r.bottom);
+            cur.left = Math.min(cur.left, r.left);
+          }
+        } else if (cur) {
+          cur.text += ch;
+        }
+        i += len;
+      }
+      return lines;
+    }
+
+    function drawTextCard(ctx, card, br, x, y, w, h) {
+      const span = card.querySelector('.txt');
+      const cs = getComputedStyle(span);
+      const ccs = getComputedStyle(card);
 
       ctx.save();
       roundRect(ctx, x, y, w, h, 6);
-      ctx.fillStyle = '#000';
+      ctx.fillStyle = ccs.backgroundColor;
       ctx.fill();
       ctx.clip();
-      if (img && img.naturalWidth) {
-        const ix = x + 1, iy = y + 1, iw = w - 2, ih = h - 2;
-        const s = Math.min(iw / img.naturalWidth, ih / img.naturalHeight);
-        const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
-        const src = prescale(img, dw * pxScale, dh * pxScale);
-        ctx.drawImage(src, ix + (iw - dw) / 2, iy + (ih - dh) / 2, dw, dh);
-      }
+      ctx.fillStyle = cs.color;
+      ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      getTextLines(span).forEach(ln => {
+        const t = ln.text.replace(/\s+$/, '');
+        if (t) ctx.fillText(t, ln.left - br.left, (ln.top + ln.bottom) / 2 - br.top);
+      });
       ctx.restore();
+    }
+
+    function drawCard(ctx, card, br, pxScale) {
+      const r = card.getBoundingClientRect();
+      const x = r.left - br.left, y = r.top - br.top, w = r.width, h = r.height;
+
+      if (card.dataset.kind === 'text') {
+        drawTextCard(ctx, card, br, x, y, w, h);
+      } else {
+        const img = card.querySelector('img');
+        ctx.save();
+        roundRect(ctx, x, y, w, h, 6);
+        ctx.fillStyle = '#000';
+        ctx.fill();
+        ctx.clip();
+        if (img && img.naturalWidth) {
+          const ix = x + 1, iy = y + 1, iw = w - 2, ih = h - 2;
+          const s = Math.min(iw / img.naturalWidth, ih / img.naturalHeight);
+          const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+          const src = prescale(img, dw * pxScale, dh * pxScale);
+          ctx.drawImage(src, ix + (iw - dw) / 2, iy + (ih - dh) / 2, dw, dh);
+        }
+        ctx.restore();
+      }
 
       ctx.strokeStyle = 'rgba(255,255,255,0.15)';
       ctx.lineWidth = 1;
@@ -817,9 +1242,10 @@
       const br = board.getBoundingClientRect();
       const W = br.width, H = br.height;
 
-      let scale = Math.min(4, Math.max(3, window.devicePixelRatio || 1));
-      const MAX_AREA = 16000000; // iOS 캔버스 면적 제한 대비
-      scale = Math.min(scale, Math.sqrt(MAX_AREA / (W * H)));
+      // 최대 6배 (카드 1칸 ≈ 400px). 보드가 크면 iOS 캔버스 면적 제한에 맞춰 자동 조절
+      const MAX_SCALE = 6;
+      const MAX_AREA = 16000000;
+      const scale = Math.min(MAX_SCALE, Math.sqrt(MAX_AREA / (W * H)));
 
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(W * scale);
@@ -887,7 +1313,7 @@
       if (btn.disabled) return;
 
       if (!document.querySelector('#tier-board .item-card')) {
-        toast('티어에 배치된 이미지가 없어요.');
+        toast('티어에 배치된 항목이 없어요.');
         return;
       }
 
@@ -921,6 +1347,8 @@
         btn.disabled = false;
       }
     }
+
+    updateCounts();
   </script>
 </body>
 </html>
