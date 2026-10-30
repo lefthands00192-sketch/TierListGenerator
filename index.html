@@ -110,6 +110,27 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     }
 
+    /* 제목 입력 (보드 맨 위) */
+    .board-title { padding: 12px 12px 10px; background: #0d0e10; }
+    #title-input {
+      display: block;
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 1px dashed #2e323b;
+      border-radius: 0;
+      -webkit-appearance: none; appearance: none;
+      outline: none;
+      color: #f0f2f5;
+      font-family: inherit;
+      font-size: 22px;
+      font-weight: 800;
+      text-align: center;
+      padding: 4px 0;
+    }
+    #title-input::placeholder { color: rgba(255,255,255,0.3); font-weight: 700; }
+    #title-input:focus { border-bottom-color: #60a5fa; }
+
     .tier-row { display: flex; min-height: 80px; background: #181a1f; }
     .tier-label {
       width: 75px;
@@ -395,6 +416,33 @@
     }
     .chip.more { background: transparent; border-style: dashed; color: var(--muted); }
 
+    /* 사용 방법 */
+    .help-pill {
+      display: block; margin: 0 auto 14px;
+      background: #23262d; color: #d1d5db;
+      border: 1px solid var(--border); border-radius: 999px;
+      padding: 7px 16px; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+    }
+    .help-pill:active { filter: brightness(1.2); }
+    #help-modal .modal-box { max-width: 440px; width: 92%; text-align: left; }
+    #help-modal h3 { text-align: center; }
+    .help-lead { font-size: 0.84rem; line-height: 1.55; color: #d1d5db; text-align: center; }
+    .help-sec { margin-top: 16px; }
+    .help-sec h4 { font-size: 0.95rem; margin-bottom: 4px; }
+    .help-sec p, .help-sec li { font-size: 0.84rem; line-height: 1.55; color: #d1d5db; }
+    .help-sec ul { padding-left: 18px; margin-top: 4px; }
+    .help-warn { background: #2b2420; border: 1px solid #7c4a1d; border-radius: 8px; padding: 10px 12px; }
+    .ex-board { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #0d0e10; margin-top: 8px; }
+    .ex-title { text-align: center; font-weight: 800; padding: 8px; font-size: 0.95rem; }
+    .ex-row { display: flex; min-height: 34px; background: #141518; margin-top: 2px; }
+    .ex-label { width: 36px; display: flex; align-items: center; justify-content: center; font-weight: 900; color: #000; font-size: 0.9rem; }
+    .ex-items { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; align-items: center; }
+    .ex-items i {
+      font-style: normal; background: #2a2e38;
+      border: 1px solid rgba(255,255,255,0.2); border-radius: 5px;
+      padding: 3px 8px; font-size: 0.75rem; font-weight: 700;
+    }
+
     /* Toast */
     #toast {
       position: fixed;
@@ -421,6 +469,7 @@
   <div class="container">
     <h1>🏆 티어표 생성기 Pro</h1>
     <p class="hint">탭하면 등급 선택 · 드래그하면 이동 · 길게 누르면 여러 개 선택<br>새로고침하면 모두 초기화돼요 (보관은 💾 백업 저장)</p>
+    <button class="help-pill" onclick="openHelp()">📖 사용 방법 보기</button>
 
     <div class="toolbar">
       <label class="btn btn-primary" for="file-input">📷 이미지 업로드</label>
@@ -445,6 +494,7 @@
 
     <!-- Tier Board -->
     <div id="tier-board">
+      <div class="board-title" id="board-title"><input type="text" id="title-input" placeholder="여기에 제목을 입력해주세요" maxlength="50" enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false"></div>
       <div class="tier-row"><div class="tier-label" style="background: #ff7f7f;">S</div><div class="tier-items" id="tier-S" data-tier="S"></div></div>
       <div class="tier-row"><div class="tier-label" style="background: #ffbf7f;">A</div><div class="tier-items" id="tier-A" data-tier="A"></div></div>
       <div class="tier-row"><div class="tier-label" style="background: #ffff7f;">B</div><div class="tier-items" id="tier-B" data-tier="B"></div></div>
@@ -458,6 +508,8 @@
       <h3>📦 미분류 보관함 <span class="count" id="pool-count">0</span></h3>
       <div id="unranked-pool" data-tier="unranked"></div>
     </div>
+
+    <button class="btn" style="width:100%; margin-top:14px;" onclick="openHelp()">📖 사용 방법 보기</button>
   </div>
 
   <!-- Quick Move Modal -->
@@ -497,6 +549,69 @@
     </div>
   </div>
 
+  <!-- 사용 방법 -->
+  <div class="modal-overlay" id="help-modal">
+    <div class="modal-box">
+      <h3>📖 사용 방법</h3>
+      <p class="help-lead">사진이나 단어를 S~F 등급으로 나눠서<br>나만의 티어표를 만들고 이미지로 저장하는 도구예요.</p>
+
+      <div class="help-sec">
+        <h4>🍓 예시: ‘좋아하는 과일 티어표’</h4>
+        <p>이렇게 완성하는 걸 목표로 아래 순서대로 따라 해 보세요.</p>
+        <div class="ex-board">
+          <div class="ex-title">좋아하는 과일 티어표</div>
+          <div class="ex-row"><span class="ex-label" style="background:#ff7f7f;">S</span><span class="ex-items"><i>딸기</i><i>망고</i></span></div>
+          <div class="ex-row"><span class="ex-label" style="background:#ffbf7f;">A</span><span class="ex-items"><i>수박</i><i>복숭아</i></span></div>
+          <div class="ex-row"><span class="ex-label" style="background:#ffff7f;">B</span><span class="ex-items"><i>사과</i><i>포도</i></span></div>
+          <div class="ex-row"><span class="ex-label" style="background:#7fff7f;">C</span><span class="ex-items"><i>바나나</i></span></div>
+          <div class="ex-row"><span class="ex-label" style="background:#7fbfff;">D</span><span class="ex-items"><i>키위</i></span></div>
+          <div class="ex-row"><span class="ex-label" style="background:#bf7fff;">F</span><span class="ex-items"><i>자몽</i></span></div>
+        </div>
+      </div>
+
+      <div class="help-sec">
+        <h4>1️⃣ 제목 쓰기</h4>
+        <p>표 맨 위 칸에 “좋아하는 과일 티어표”라고 입력해요. 비워 두면 제목 없이 저장돼요.</p>
+      </div>
+
+      <div class="help-sec">
+        <h4>2️⃣ 항목 넣기</h4>
+        <ul>
+          <li><b>단어</b>: 입력칸에 <b>딸기</b>를 쓰고 엔터(또는 ➕ 추가). 수박, 망고… 하나씩 계속 넣어요.</li>
+          <li><b>사진</b>: 📷 이미지 업로드로 과일 사진을 여러 장 한꺼번에 고를 수 있어요.</li>
+          <li><b>많은 단어를 한 번에</b>: 엑셀·구글 시트에서 과일 이름이 적힌 칸들을 복사해서 입력칸에 붙여넣거나, 📊 엑셀/CSV 업로드로 파일을 올려요. 가져오기 창에서 첫 줄(제목) 제외 여부를 고를 수 있어요.</li>
+        </ul>
+        <p style="margin-top:4px;">넣은 항목은 아래 📦 미분류 보관함에 쌓여요.</p>
+      </div>
+
+      <div class="help-sec">
+        <h4>3️⃣ 등급에 배치하기</h4>
+        <ul>
+          <li><b>탭</b>: 항목을 누르면 등급(S~F) 선택 창이 떠요. <b>딸기 → S</b>처럼 골라요.</li>
+          <li><b>드래그</b>: 항목을 잡아서 원하는 등급 줄에 놓아요. 같은 줄 안에서 놓는 위치로 순서도 바꿀 수 있어요.</li>
+          <li>단어는 탭한 뒤 ✏️ 텍스트 수정, 🗑️ 삭제도 할 수 있어요.</li>
+        </ul>
+      </div>
+
+      <div class="help-sec">
+        <h4>4️⃣ 여러 개 한꺼번에 옮기기</h4>
+        <p>항목을 <b>길게 누르면</b> 선택 모드가 켜져요. 다른 항목을 탭해서 더 선택한 뒤, 선택된 항목 하나를 끌면 <b>전부 같이</b> 이동해요. 예를 들어 노란 과일 3개를 골라 B 줄에 한 번에 놓는 식이에요. 화면 위쪽 바의 전체선택·이동·삭제·완료 버튼도 쓸 수 있어요.</p>
+      </div>
+
+      <div class="help-sec">
+        <h4>5️⃣ 이미지로 저장하기</h4>
+        <p>🖼️ 이미지 다운로드를 누르면 공유창이 열려요. 거기서 ‘이미지 저장’을 고르면 사진첩에 저장돼요. 공유창이 안 열리면 나오는 화면에서 이미지를 길게 눌러 저장하세요.</p>
+      </div>
+
+      <div class="help-sec help-warn">
+        <h4>⚠️ 꼭 알아두세요</h4>
+        <p>페이지를 <b>새로고침하면 모든 내용이 초기화</b>돼요. 나중에 이어서 하려면 💾 백업 저장으로 파일을 받아 두고, 다음에 📂 백업 불러오기로 불러오세요. (제목도 함께 저장돼요)</p>
+      </div>
+
+      <button class="btn btn-primary" style="margin-top:16px;" onclick="closeModal('help-modal')">닫기</button>
+    </div>
+  </div>
+
   <!-- Preview Modal (공유창이 열리지 않을 때의 대체 저장 방법) -->
   <div class="modal-overlay" id="preview-modal">
     <div class="modal-box">
@@ -527,6 +642,23 @@
     let toastTimer = null;
     let previewUrl = null;
     let importState = null;
+
+    const MAX_TITLE = 50;
+    const titleInput = document.getElementById('title-input');
+
+    // 제목이 길면 입력칸 안에서 글자 크기를 조금씩 줄여 한 줄에 맞춤
+    function fitTitle() {
+      titleInput.style.fontSize = '';
+      let size = parseFloat(getComputedStyle(titleInput).fontSize) || 22;
+      while (titleInput.scrollWidth > titleInput.clientWidth + 1 && size > 16) {
+        size -= 1;
+        titleInput.style.fontSize = size + 'px';
+      }
+    }
+    titleInput.addEventListener('input', fitTitle);
+    titleInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); titleInput.blur(); }
+    });
 
     /* 새로고침 = 초기화 : 예전 버전이 남겨둔 저장 데이터는 정리 */
     (function purgeOldStorage() {
@@ -1005,7 +1137,10 @@
     }
 
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && isSelecting()) exitSelection();
+      if (e.key !== 'Escape') return;
+      const help = document.getElementById('help-modal');
+      if (help.classList.contains('active')) { closeModal('help-modal'); return; }
+      if (isSelecting()) exitSelection();
     });
 
     /* ---------- 드래그 (터치/마우스 공통, 놓은 위치에 끼워넣기) ---------- */
@@ -1221,6 +1356,13 @@
       if (id === 'import-modal') importState = null;
     }
 
+    function openHelp() {
+      const m = document.getElementById('help-modal');
+      m.classList.add('active');
+      const box = m.querySelector('.modal-box');
+      if (box) box.scrollTop = 0;
+    }
+
     function closePreview() {
       document.getElementById('preview-modal').classList.remove('active');
       document.getElementById('preview-img').removeAttribute('src');
@@ -1238,6 +1380,8 @@
     /* ---------- 백업 / 초기화 (자동 저장 없음: 새로고침하면 초기화) ---------- */
     function collectData() {
       const items = [];
+      const title = titleInput.value.trim();
+      if (title) items.push({ title });
       document.querySelectorAll('.item-card:not(.ghost)').forEach(card => {
         const parent = card.parentElement;
         if (!parent) return;
@@ -1256,8 +1400,10 @@
       if (!Array.isArray(data)) return;
       exitSelection();
       allContainers().forEach(el => el.innerHTML = '');
+      titleInput.value = '';
       data.forEach(item => {
         if (!item) return;
+        if (typeof item.title === 'string') { titleInput.value = item.title.slice(0, MAX_TITLE); return; }
         const parent = containerFor(item.tier);
         if (typeof item.text === 'string') {
           const t = normalizeText(item.text);
@@ -1266,6 +1412,7 @@
           createItemCard(item.imgSrc, parent);
         }
       });
+      fitTitle();
       updateCounts();
     }
 
@@ -1292,7 +1439,7 @@
         if (collectData().length > 0 && !confirm('현재 내용이 백업 내용으로 대체됩니다. 계속할까요?')) return;
 
         restoreData(parsed);
-        toast('백업을 불러왔어요 (' + parsed.length + '개)');
+        toast('백업을 불러왔어요 (' + parsed.filter(i => i && typeof i.title !== 'string').length + '개)');
       };
       reader.readAsText(file);
     });
@@ -1301,6 +1448,8 @@
       if (!confirm('모든 내용을 초기화하시겠습니까?')) return;
       exitSelection();
       allContainers().forEach(el => el.innerHTML = '');
+      titleInput.value = '';
+      fitTitle();
       updateCounts();
       toast('초기화되었습니다.');
     }
@@ -1435,6 +1584,15 @@
         i.decode ? i.decode().catch(() => {}) : Promise.resolve()
       ));
 
+      // 제목을 비워 두면 제목 영역 자체를 빼고(글씨 없이) 저장
+      const box = document.getElementById('board-title');
+      const hasTitle = titleInput.value.trim() !== '';
+      if (!hasTitle) box.style.display = 'none';
+      try { return drawBoard(board, hasTitle); }
+      finally { box.style.display = ''; }
+    }
+
+    function drawBoard(board, hasTitle) {
       const br = board.getBoundingClientRect();
       const W = br.width, H = br.height;
 
@@ -1463,6 +1621,24 @@
       ctx.clip();
       ctx.fillStyle = '#0d0e10';
       ctx.fillRect(0, 0, W, H);
+
+      if (hasTitle) {
+        const text = titleInput.value.trim();
+        const tr = rel(document.getElementById('board-title'));
+        const fam = getComputedStyle(titleInput).fontFamily;
+        let fs = 22;
+        ctx.font = '800 ' + fs + 'px ' + fam;
+        const avail = tr.w - 24;
+        const tw = ctx.measureText(text).width;
+        if (tw > avail) {                       // 너무 길면 한 줄에 맞게 글자 크기 축소
+          fs = Math.max(8, fs * avail / tw);
+          ctx.font = '800 ' + fs + 'px ' + fam;
+        }
+        ctx.fillStyle = '#f0f2f5';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, tr.x + tr.w / 2, tr.y + tr.h / 2 + 1);
+      }
 
       for (const row of board.querySelectorAll('.tier-row')) {
         const rr = rel(row);
