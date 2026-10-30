@@ -196,6 +196,77 @@
       cursor: grabbing;
     }
 
+    /* 다중 선택 */
+    @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+    .item-card.lp-pop { animation: pop 0.25s ease; }
+    .item-card.selected::after {
+      content: "✓";
+      position: absolute; inset: 0;
+      border: 2px solid #60a5fa;
+      border-radius: 6px;
+      background: rgba(59, 130, 246, 0.28);
+      color: #fff; font-weight: 900; font-size: 13px; line-height: 1;
+      display: flex; align-items: flex-start; justify-content: flex-end;
+      padding: 3px 5px;
+      pointer-events: none;
+    }
+    body.selecting .item-card:not(.selected)::after {
+      content: "";
+      position: absolute; top: 3px; right: 3px;
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.75);
+      background: rgba(0,0,0,0.35);
+      pointer-events: none;
+    }
+    body.selecting .item-card.ghost:not(.multi)::after { display: none; }
+    .item-card.ghost.multi {
+      box-shadow: 5px 5px 0 rgba(96,165,250,0.55), 10px 10px 0 rgba(96,165,250,0.3), 0 10px 20px rgba(0,0,0,0.8);
+    }
+    body.selecting .item-card.ghost.multi::after, .item-card.ghost.multi::after {
+      content: attr(data-count);
+      position: absolute; inset: auto; top: 3px; right: 3px;
+      width: auto; min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box;
+      border: none; border-radius: 11px;
+      background: #ef4444; color: #fff;
+      font-size: 12px; font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    #select-bar {
+      position: fixed;
+      top: calc(8px + env(safe-area-inset-top));
+      left: 50%;
+      width: calc(100% - 24px);
+      max-width: 560px;
+      transform: translate(-50%, -150%);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.2s, opacity 0.2s;
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 10px;
+      background: rgba(35, 38, 45, 0.94);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid #3f4452;
+      border-radius: 14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      z-index: 9000;
+    }
+    #select-bar.show { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+    #select-count { flex: 1; font-size: 0.85rem; font-weight: 700; min-width: 0; }
+    .sb-btn {
+      min-height: 36px; padding: 0 10px;
+      background: #2b2e36; color: #fff;
+      border: 1px solid var(--border); border-radius: 8px;
+      font-size: 0.8rem; font-weight: 700; cursor: pointer;
+      white-space: nowrap;
+    }
+    .sb-btn:active { filter: brightness(1.2); }
+    .sb-btn:disabled { opacity: 0.4; }
+    .sb-btn.primary { background: #3b82f6; border-color: #60a5fa; }
+    .sb-btn.danger { color: #f87171; border-color: #7f1d1d; background: transparent; }
+    body.selecting #toast { top: calc(68px + env(safe-area-inset-top)); }
+
     /* Unranked Pool */
     #unranked-section {
       margin-top: 16px;
@@ -349,7 +420,7 @@
 
   <div class="container">
     <h1>🏆 티어표 생성기 Pro</h1>
-    <p class="hint">이미지·단어를 탭하면 등급 선택 · 드래그하면 이동/순서 변경<br>새로고침하면 모두 초기화돼요 (보관은 💾 백업 저장)</p>
+    <p class="hint">탭하면 등급 선택 · 드래그하면 이동 · 길게 누르면 여러 개 선택<br>새로고침하면 모두 초기화돼요 (보관은 💾 백업 저장)</p>
 
     <div class="toolbar">
       <label class="btn btn-primary" for="file-input">📷 이미지 업로드</label>
@@ -392,7 +463,7 @@
   <!-- Quick Move Modal -->
   <div class="modal-overlay" id="move-modal">
     <div class="modal-box">
-      <h3>배치할 등급 선택</h3>
+      <h3 id="move-title">배치할 등급 선택</h3>
       <img id="move-thumb" class="modal-thumb" alt="">
       <div id="move-text"></div>
       <div class="tier-grid">
@@ -435,13 +506,23 @@
     </div>
   </div>
 
+  <!-- 다중 선택 바 -->
+  <div id="select-bar">
+    <span id="select-count">항목을 탭해서 선택</span>
+    <button class="sb-btn" onclick="selectAllInContainer()">전체선택</button>
+    <button class="sb-btn primary" id="sel-move" onclick="moveSelection()">이동</button>
+    <button class="sb-btn danger" id="sel-delete" onclick="deleteSelection()">삭제</button>
+    <button class="sb-btn" onclick="exitSelection()">완료</button>
+  </div>
+
   <div id="toast"></div>
 
   <script>
     const POOL_ID = 'unranked-pool';
     const MAX_IMPORT = 500;
 
-    let selectedItem = null;
+    let modalTargets = [];   // 등급 선택 창이 다루는 카드들
+    let selAnchor = null;    // 마지막으로 선택한 카드가 있는 칸
     let drag = null;
     let toastTimer = null;
     let previewUrl = null;
@@ -867,29 +948,115 @@
     document.getElementById('opt-header').addEventListener('change', refreshImport);
     document.getElementById('opt-dedupe').addEventListener('change', refreshImport);
 
+    /* ---------- 다중 선택 (길게 눌러서 시작) ---------- */
+    const LONG_PRESS_MS = 450;
+
+    function isSelecting() { return document.body.classList.contains('selecting'); }
+    function selectedCards() { return Array.from(document.querySelectorAll('.item-card.selected:not(.ghost)')); }
+
+    function updateSelectBar() {
+      const n = selectedCards().length;
+      document.getElementById('select-count').textContent = n ? n + '개 선택됨' : '항목을 탭해서 선택';
+      document.getElementById('sel-move').disabled = n === 0;
+      document.getElementById('sel-delete').disabled = n === 0;
+    }
+
+    function enterSelection() {
+      document.body.classList.add('selecting');
+      document.getElementById('select-bar').classList.add('show');
+      updateSelectBar();
+    }
+
+    function exitSelection() {
+      document.querySelectorAll('.item-card.selected').forEach(c => c.classList.remove('selected'));
+      document.body.classList.remove('selecting');
+      document.getElementById('select-bar').classList.remove('show');
+      selAnchor = null;
+      updateSelectBar();
+    }
+
+    function toggleSelect(card, force) {
+      const on = force === undefined ? !card.classList.contains('selected') : force;
+      card.classList.toggle('selected', on);
+      selAnchor = card.parentElement;
+      updateSelectBar();
+    }
+
+    // 마지막으로 선택한 항목이 있는 칸(등급/미분류)의 항목을 모두 선택
+    function selectAllInContainer() {
+      if (!selAnchor) { toast('먼저 항목을 하나 선택하세요.'); return; }
+      selAnchor.querySelectorAll('.item-card').forEach(c => c.classList.add('selected'));
+      updateSelectBar();
+    }
+
+    function moveSelection() {
+      const cards = selectedCards();
+      if (cards.length) openMoveModal(cards);
+    }
+
+    function deleteSelection() {
+      const cards = selectedCards();
+      if (!cards.length) return;
+      if (!confirm(cards.length + '개를 삭제할까요?')) return;
+      cards.forEach(c => c.remove());
+      updateCounts();
+      exitSelection();
+      toast(cards.length + '개 삭제됨');
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && isSelecting()) exitSelection();
+    });
+
     /* ---------- 드래그 (터치/마우스 공통, 놓은 위치에 끼워넣기) ---------- */
     function onPointerDown(e) {
       if (drag) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
+      const card = e.currentTarget;
       drag = {
-        card: e.currentTarget,
+        card,
         id: e.pointerId,
         sx: e.clientX, sy: e.clientY,
-        moved: false, ghost: null, hover: null
+        moved: false, ghost: null, hover: null,
+        cards: [card], group: false, longPressed: false, timer: null
       };
+
+      // 길게 누르면 선택 모드 시작 (움직이면 취소되고 일반 드래그로 처리)
+      drag.timer = setTimeout(() => {
+        if (!drag || drag.card !== card || drag.moved) return;
+        drag.longPressed = true;
+        if (!isSelecting()) enterSelection();
+        if (!card.classList.contains('selected')) toggleSelect(card, true);
+        card.classList.add('lp-pop');
+        setTimeout(() => card.classList.remove('lp-pop'), 300);
+        if (navigator.vibrate) { try { navigator.vibrate(15); } catch (_) {} }
+      }, LONG_PRESS_MS);
+
       window.addEventListener('pointermove', onPointerMove, { passive: false });
       window.addEventListener('pointerup', onPointerUp);
       window.addEventListener('pointercancel', onPointerCancel);
     }
 
     function startDrag() {
+      clearTimeout(drag.timer);
       drag.moved = true;
+
+      // 선택된 카드를 잡고 끌면 선택된 전체가, 선택 안 된 카드를 끌면 그 카드만 이동
+      drag.group = isSelecting() && drag.card.classList.contains('selected');
+      const sel = selectedCards();
+      drag.cards = (drag.group && sel.length > 1) ? sel : [drag.card];
+
       const g = drag.card.cloneNode(true);
+      g.classList.remove('selected', 'drag-origin', 'lp-pop');
       g.classList.add('ghost');
+      if (drag.cards.length > 1) {
+        g.classList.add('multi');
+        g.dataset.count = String(drag.cards.length);
+      }
       g.style.width = drag.card.getBoundingClientRect().width + 'px';
       document.body.appendChild(g);
       drag.ghost = g;
-      drag.card.classList.add('drag-origin');
+      drag.cards.forEach(c => c.classList.add('drag-origin'));
     }
 
     function onPointerMove(e) {
@@ -922,7 +1089,7 @@
       let ref = null;       // 이 노드 앞에 삽입 (null이면 맨 뒤)
       let self = false;
       const target = el.closest('.item-card');
-      if (target === drag.card) {
+      if (target && drag.cards.includes(target)) {
         self = true;
       } else if (target && target.parentElement === container) {
         const r = target.getBoundingClientRect();
@@ -943,14 +1110,25 @@
       const d = drag;
       if (d.moved) {
         const loc = locate(e.clientX, e.clientY);
+        const cards = d.cards, group = d.group;
         cleanupDrag();
         if (loc && !loc.self) {
-          loc.container.insertBefore(d.card, loc.ref || null);
+          let ref = loc.ref;
+          while (ref && cards.includes(ref)) ref = ref.nextElementSibling;
+          cards.forEach(c => loc.container.insertBefore(c, ref || null));
           updateCounts();
+          if (group) exitSelection();
         }
+      } else if (d.longPressed) {
+        cleanupDrag();                       // 길게 눌러 선택만 한 경우
       } else {
         cleanupDrag();
-        openMoveModal(d.card);
+        if (isSelecting() || e.ctrlKey || e.metaKey || e.shiftKey) {
+          if (!isSelecting()) enterSelection();
+          toggleSelect(d.card);              // 선택 모드에서는 탭 = 선택/해제
+        } else {
+          openMoveModal([d.card]);
+        }
       }
     }
 
@@ -962,28 +1140,40 @@
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerCancel);
+      clearTimeout(drag.timer);
       if (drag.ghost) drag.ghost.remove();
+      drag.cards.forEach(c => c.classList.remove('drag-origin'));
       drag.card.classList.remove('drag-origin');
       if (drag.hover) drag.hover.classList.remove('drop-hover');
       drag = null;
     }
 
-    /* ---------- 등급 선택 모달 ---------- */
-    function openMoveModal(card) {
-      selectedItem = card;
-      const isText = card.dataset.kind === 'text';
+    /* ---------- 등급 선택 모달 (1개 또는 선택한 여러 개) ---------- */
+    function openMoveModal(cards) {
+      modalTargets = cards;
+      const single = cards.length === 1 ? cards[0] : null;
+      const isText = !!single && single.dataset.kind === 'text';
       const thumb = document.getElementById('move-thumb');
       const tbox = document.getElementById('move-text');
       const editBtn = document.getElementById('move-edit');
 
-      if (isText) {
+      document.getElementById('move-title').textContent =
+        single ? '배치할 등급 선택' : cards.length + '개 항목의 등급 선택';
+
+      if (!single) {
         thumb.style.display = 'none';
         thumb.removeAttribute('src');
         tbox.style.display = 'flex';
-        tbox.textContent = card.querySelector('.txt').textContent;
+        tbox.textContent = cards.length + '개 선택됨';
+        editBtn.style.display = 'none';
+      } else if (isText) {
+        thumb.style.display = 'none';
+        thumb.removeAttribute('src');
+        tbox.style.display = 'flex';
+        tbox.textContent = single.querySelector('.txt').textContent;
         editBtn.style.display = 'flex';
       } else {
-        const img = card.querySelector('img');
+        const img = single.querySelector('img');
         thumb.style.display = 'block';
         thumb.src = img ? img.src : '';
         tbox.style.display = 'none';
@@ -993,35 +1183,39 @@
     }
 
     function moveTo(tier) {
-      if (!selectedItem) return;
-      containerFor(tier).appendChild(selectedItem);
+      if (!modalTargets.length) return;
+      const container = containerFor(tier);
+      modalTargets.forEach(card => container.appendChild(card));
       updateCounts();
       closeModal('move-modal');
+      if (isSelecting()) exitSelection();
     }
 
     function editSelected() {
-      if (!selectedItem || selectedItem.dataset.kind !== 'text') return;
-      const cur = selectedItem.querySelector('.txt').textContent;
-      const v = prompt('텍스트 수정', cur);
+      if (modalTargets.length !== 1 || modalTargets[0].dataset.kind !== 'text') return;
+      const card = modalTargets[0];
+      const v = prompt('텍스트 수정', card.querySelector('.txt').textContent);
       if (v === null) return;
       const t = normalizeText(v);
       if (!t) { toast('내용이 비어 있어요.'); return; }
-      setCardText(selectedItem, t);
+      setCardText(card, t);
       closeModal('move-modal');
     }
 
     function deleteSelected() {
-      if (!selectedItem) return;
-      if (!confirm('삭제할까요?')) return;
-      selectedItem.remove();
+      if (!modalTargets.length) return;
+      const n = modalTargets.length;
+      if (!confirm(n === 1 ? '삭제할까요?' : n + '개를 삭제할까요?')) return;
+      modalTargets.forEach(card => card.remove());
       updateCounts();
       closeModal('move-modal');
+      if (isSelecting()) exitSelection();
     }
 
     function closeModal(id) {
       document.getElementById(id).classList.remove('active');
       if (id === 'move-modal') {
-        selectedItem = null;
+        modalTargets = [];
         document.getElementById('move-thumb').removeAttribute('src');
       }
       if (id === 'import-modal') importState = null;
@@ -1060,6 +1254,7 @@
 
     function restoreData(data) {
       if (!Array.isArray(data)) return;
+      exitSelection();
       allContainers().forEach(el => el.innerHTML = '');
       data.forEach(item => {
         if (!item) return;
@@ -1104,6 +1299,7 @@
 
     function clearData() {
       if (!confirm('모든 내용을 초기화하시겠습니까?')) return;
+      exitSelection();
       allContainers().forEach(el => el.innerHTML = '');
       updateCounts();
       toast('초기화되었습니다.');
